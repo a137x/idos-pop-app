@@ -1,0 +1,68 @@
+{
+  "name": "@idos-network/utils",
+  "description": "idOS Utils JavaScript SDK for enclave environments",
+  "version": "1.0.0-rc.1.1",
+  "dependencies": {
+    "@stablelib/base64": "^2.0.1",
+    "@stablelib/binary": "^2.0.1",
+    "@stablelib/bytes": "^2.0.1",
+    "@stablelib/hex": "^2.0.1",
+    "@stablelib/sha256": "^2.0.1",
+    "@stablelib/utf8": "^2.0.1",
+    "borsh": "^2.0.0",
+    "bs58": "^6.0.0",
+    "es-toolkit": "^1.39.0",
+    "scrypt-js": "^3.0.1",
+    "tweetnacl": "^1.0.3",
+    "web-bip39": "^0.0.3",
+    "xrpl": "^4.3.0",
+    "zod": "4.0.14"
+  },
+  "peerDependencies": {
+    "ethers": "^6.14.0",
+    "typescript": "^5.8.3"
+  },
+  "peerDependenciesMeta": {
+    "ethers": {
+      "optional": true
+    }
+  },
+  "exports": {
+    "./encryption": {
+      "types": "./dist/encryption/index.d.ts",
+      "import": "./dist/encryption/index.js"
+    },
+    "./store": {
+      "types": "./dist/store/index.d.ts",
+      "import": "./dist/store/index.js"
+    },
+    "./codecs": {
+      "types": "./dist/codecs/index.d.ts",
+      "import": "./dist/codecs/index.js"
+    },
+    "./enclave": {
+      "types": "./dist/enclave/index.d.ts",
+      "import": "./dist/enclave/index.js"
+    },
+    "./enclave/local": {
+      "types": "./dist/enclave/local.d.ts",
+      "import": "./dist/enclave/local.js"
+    },
+    "./xrpl-credentials": {
+      "types": "./dist/xrpl-credentials/index.d.ts",
+      "import": "./dist/xrpl-credentials/index.js"
+    },
+    "./mpc": {
+      "types": "./dist/mpc/index.d.ts",
+      "import": "./dist/mpc/index.js"
+    }
+  },
+  "homepage": "https://idos.network",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "module": "dist/index.js",
+  "repository": "https://github.com/idos-network/idos-sdk-js",
+  "sideEffects": false,
+  "type": "module",
+  "types": "./dist/index.d.ts"
+}

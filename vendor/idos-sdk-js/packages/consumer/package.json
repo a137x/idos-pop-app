@@ -1,0 +1,34 @@
+{
+  "name": "@idos-network/consumer",
+  "description": "idOS Consumer JavaScript SDK for server environments",
+  "version": "1.0.0-rc.1.2",
+  "dependencies": {
+    "@digitalbazaar/ed25519-signature-2020": "^5.4.0",
+    "@digitalbazaar/ed25519-verification-key-2020": "^4.2.0",
+    "@digitalbazaar/vc": "^7.2.0",
+    "@idos-network/kwil-js": "0.1.1",
+    "base85": "^3.1.0",
+    "jsonld-document-loader": "^2.3.0",
+    "ripple-keypairs": "^2.0.0",
+    "tweetnacl": "^1.0.3",
+    "web-streams-polyfill": "^4.1.0",
+    "@idos-network/utils": "file:../utils"
+  },
+  "peerDependencies": {
+    "ethers": "^6.14.0",
+    "near-api-js": "4.0.3",
+    "typescript": "^5.8.3"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "homepage": "https://idos.network",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "repository": "https://github.com/idos-network/idos-sdk-js",
+  "type": "module",
+  "types": "./dist/index.d.ts"
+}
