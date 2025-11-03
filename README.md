@@ -12,15 +12,136 @@ Verify human identity via idOS credentials and mint unique Proof-of-Personhood N
 ## How It Works
 
 ```mermaid
-flowchart TD
-    A[EVM Wallet] --> B[idOS Login]
-    B --> C[Verify idOS Credential]
-    C --> D[Extract userId]
-    D --> E{Check Neon DB - already claimed?}
-    E -->|No| F[Radix Wallet]
-    F --> G[ROLA Verification]
-    G --> H[Mint PoP NFT]
-    H --> I[Record in Neon with userId and wallets]
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant EVM_Wallet
+    participant idOS_Network
+    participant Backend_API
+    participant Session_Store
+    participant Challenge_Store
+    participant Radix_Wallet
+    participant ROLA_Verifier
+    participant Database
+    participant Radix_Ledger
+    participant Smart_Contract
+
+    %% Step 1: EVM Wallet Connection
+    Note over User,Frontend: Step 1: Connect EVM Wallet
+    User->>Frontend: Click "Connect Wallet"
+    Frontend->>EVM_Wallet: Open WalletConnect Modal
+    EVM_Wallet-->>Frontend: Return connected address
+    Frontend->>Frontend: Store EVM address in state
+
+    %% Step 2: idOS Initialization & Credential Verification
+    Note over User,idOS_Network: Step 2: Initialize idOS & Verify Credentials
+    Frontend->>idOS_Network: Check if profile exists
+    idOS_Network-->>Frontend: Profile exists: true
+
+    Frontend->>EVM_Wallet: Request signer
+    EVM_Wallet-->>Frontend: Return ethers.Signer
+
+    Frontend->>idOS_Network: withUserSigner(signer).logIn()
+    idOS_Network-->>Frontend: Return authenticated idOSClient
+
+    Frontend->>idOS_Network: getAllCredentials()
+    idOS_Network-->>Frontend: Return credentials list
+
+    loop For each credential
+        Frontend->>idOS_Network: requestAccessGrant(credentialId)
+        idOS_Network-->>Frontend: Access grant created
+
+        Frontend->>Backend_API: GET /api/verify-credential/[userId]
+        Backend_API->>idOS_Network: getAccessGrants(userId, dataId)
+        idOS_Network-->>Backend_API: Return grant
+        Backend_API->>idOS_Network: getCredentialSharedContentDecrypted(dataId)
+        idOS_Network-->>Backend_API: Return decrypted credential
+        Backend_API-->>Frontend: Return verified credential data
+        Frontend->>Frontend: Store in verifiedCredentials Map
+    end
+
+    %% Step 3: Radix Wallet Connection & ROLA Verification
+    Note over User,Radix_Ledger: Step 3: Connect Radix & Verify with ROLA
+    User->>Frontend: Click "Connect Radix Wallet"
+
+    Frontend->>Backend_API: GET /api/radix/challenge
+    Backend_API->>Backend_API: Generate random 32-byte challenge
+    Backend_API->>Challenge_Store: Store challenge (5min expiry)
+    Backend_API-->>Frontend: Return challenge
+
+    Frontend->>Radix_Wallet: sendOneTimeRequest(accounts + proof)
+    Radix_Wallet->>User: Request approval
+    User->>Radix_Wallet: Approve
+    Radix_Wallet->>Radix_Wallet: Sign challenge with private key
+    Radix_Wallet-->>Frontend: Return address + proof (signature, publicKey)
+
+    Frontend->>Backend_API: POST /api/radix/verify-account
+    Backend_API->>Challenge_Store: Verify & consume challenge (one-time use)
+    Challenge_Store-->>Backend_API: Valid
+    Backend_API->>ROLA_Verifier: verifySignedChallenge(challenge, proof, address)
+    ROLA_Verifier->>Radix_Ledger: Query account state via Gateway API
+    Radix_Ledger-->>ROLA_Verifier: Return account public keys
+    ROLA_Verifier->>ROLA_Verifier: Verify signature matches account keys
+    ROLA_Verifier-->>Backend_API: Verification successful
+    Backend_API->>Session_Store: setRadixVerification(radixAddress)
+    Backend_API-->>Frontend: Success
+
+    Frontend->>Backend_API: POST /api/radix/verify-credentials
+    Backend_API->>Session_Store: setCredentialVerification(radix, evm, userId, credentials)
+    Backend_API-->>Frontend: Credentials stored in session
+
+    %% Step 4: Check Account Deposit Rule
+    Frontend->>Radix_Ledger: GET /state/entity/details (check deposit rule)
+    Radix_Ledger-->>Frontend: Return account deposit rule
+    alt Deposits disabled
+        Frontend->>Frontend: Display warning banner
+    end
+
+    %% Step 5: Mint NFT
+    Note over User,Smart_Contract: Step 5: Mint Proof-of-Personhood NFT
+    User->>Frontend: Click "Send NFT"
+    Frontend->>Backend_API: POST /api/radix/mint-nft
+
+    Backend_API->>Session_Store: validateMintingSession(radixAddress)
+    Session_Store->>Session_Store: Check session exists & not expired
+    Session_Store->>Session_Store: Verify rolaVerifiedAt & credentials exist
+    Session_Store-->>Backend_API: Valid session (userId, credentials)
+
+    Backend_API->>Database: getExistingClaim(userId)
+    Database->>Database: SELECT * FROM pop_claims WHERE user_id = userId
+
+    alt User already claimed
+        Database-->>Backend_API: Return existing claim
+        Backend_API-->>Frontend: HTTP 409 - Already claimed error
+        Frontend->>User: Display "Already claimed" message
+    else First time claim
+        Database-->>Backend_API: null (no previous claim)
+
+        Backend_API->>Backend_API: buildIssuePopNftManifest()
+        Note right of Backend_API: Manifest:<br/>1. Lock fee (5 XRD)<br/>2. Create admin badge proof<br/>3. Call issue_pop(credentialId, issuerId, recipient)
+
+        Backend_API->>Backend_API: sendRadixTransaction(privateKey, manifest)
+        Backend_API->>Backend_API: Sign transaction with backend private key
+        Backend_API->>Radix_Ledger: Submit notarized transaction
+
+        Radix_Ledger->>Smart_Contract: Execute issue_pop()
+        Smart_Contract->>Smart_Contract: Mint NFT with credentialId as NFT ID
+        Smart_Contract->>Smart_Contract: Store NFT in AccountLocker (claimable)
+        Smart_Contract->>Radix_Ledger: Commit transaction
+
+        Backend_API->>Backend_API: Poll transaction status (max 30s)
+        Radix_Ledger-->>Backend_API: Transaction committed successfully
+
+        Backend_API->>Database: recordClaim(userId, credentialId, radixAddress, evmAddress)
+        Database->>Database: INSERT INTO pop_claims (prevents duplicate)
+        Database-->>Backend_API: Claim recorded
+
+        Backend_API->>Session_Store: markAsMinted(radixAddress) - delete session
+        Session_Store->>Session_Store: Delete session (prevent reuse)
+
+        Backend_API-->>Frontend: Success (transactionId, nftId)
+        Frontend->>User: Display success + transaction link
+    end
 ```
 
 **Deduplication**: `userId` is a stable, unique idOS user identifier per person. We store this in Neon Postgres along with wallet addresses and timestamps to prevent the same person from claiming multiple NFTs. It would also be possible to store the `userId` on-ledger (even hashed), to prevent the same person from minting multiple NFTs. We don't do that out of privacy concerns.
