@@ -192,8 +192,14 @@ RADIX_COMPONENT_ADMIN_BADGE=your_admin_badge
 DATABASE_URL=postgresql://user:password@host/database?sslmode=require
 ```
 
-### 4. Set Up Neon Database
-Set up a Neon Postgres database (easy via Vercel) and run the initial migration (`lib/db/migrate.sql`). Then configure your `.env.local` or production environment variables to include the `DATABASE_URL`.
+### 4. Set Up PostgreSQL Database
+
+The app connects to PostgreSQL via the `DATABASE_URL` environment variable only. No code changes needed.
+
+1. Create database `idos_pop` in your PostgreSQL instance
+2. Run migration at `lib/db/migrate.sql`
+3. Set environment variables.
+
 **Why do we need a database?** To store claim records (userId, wallets, timestamps) and prevent the same person from claiming multiple NFTs.
 
 ### 5. Run Locally
@@ -269,8 +275,10 @@ Expected behavior - this person already minted an NFT. The error includes detail
 
 ### Database connection errors
 - Check `DATABASE_URL` is set correctly in `.env.local`
-- Verify Neon project is active (free tier doesn't sleep)
-- Run the migration at `lib/db/migrate.sql`
+- Ensure PostgreSQL is running: `docker-compose ps`
+- Restart database: `docker-compose restart postgres`
+- Check logs: `docker-compose logs postgres`
+- Verify migration ran: `docker-compose exec postgres psql -U postgres -d idos_pop -c "\dt"`
 
 ### "Invalid session" when minting
 Session expired (30 min timeout). User needs to reconnect and verify again.
