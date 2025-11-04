@@ -124,6 +124,7 @@ export default function Home() {
       // Filter to only PoP credentials (FaceSign issuer) and take the first one
       const popCredentials = realCredentials.filter((cred) => {
         try {
+          if (!cred.public_notes) return false;
           const notes = JSON.parse(cred.public_notes);
           return notes.issuer === "FaceSign";
         } catch {
