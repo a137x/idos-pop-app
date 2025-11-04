@@ -115,16 +115,31 @@ export default function Home() {
       setIdOSClient(loggedInClient);
       setCurrentStep(2);
 
-      // Fetch credentials and filter to only real credentials (not access grants)
+      // Fetch credentials and filter to only PoP credentials (FaceSign)
       const allCredentials = await loggedInClient.getAllCredentials();
       const realCredentials = allCredentials.filter(
         (cred) => !cred.original_id && !!cred.public_notes
       );
 
-      setCredentials(realCredentials);
+      // Filter to only PoP credentials (FaceSign issuer) and take the first one
+      const popCredentials = realCredentials.filter((cred) => {
+        try {
+          const notes = JSON.parse(cred.public_notes);
+          return notes.issuer === "FaceSign";
+        } catch {
+          return false;
+        }
+      });
 
-      if (realCredentials.length === 0) {
-        setError("No credentials found in your idOS profile (only access grants)");
+      console.log(`Found ${popCredentials.length} PoP credential(s) out of ${realCredentials.length} total credentials`);
+
+      // Only use the first PoP credential (users should only have one, but don't error if they have multiple)
+      const firstPopCredential = popCredentials.length > 0 ? [popCredentials[0]] : [];
+
+      setCredentials(firstPopCredential);
+
+      if (firstPopCredential.length === 0) {
+        setError("No Proof-of-Personhood credentials found. Please create a FaceSign credential at https://app.idos.network/?ref=2993D304");
       }
     } catch (err: any) {
       setError(err.message || "Failed to initialize idOS");
@@ -134,7 +149,7 @@ export default function Home() {
     }
   };
 
-  // Step 3: Verify all credentials
+  // Step 3: Verify first PoP credential only
   const verifyAllCredentials = async () => {
     if (!idOSClient || idOSClient.state !== "logged-in" || credentials.length === 0) return;
 
@@ -152,41 +167,44 @@ export default function Home() {
 
       const verified = new Map();
 
-      for (const credential of credentials) {
-        try {
-          // Request access grant
-          const accessGrant = await idOSClient.requestAccessGrant(credential.id, {
-            consumerEncryptionPublicKey,
-            consumerAuthPublicKey,
-          });
+      // Only verify the first PoP credential
+      const firstCredential = credentials[0];
 
-          // Verify on backend - pass the credential ID so backend can find the grant
-          const response = await fetch(
-            `/api/verify-credential/${idOSClient.user.id}?dataId=${credential.id}`
-          );
-          const result = await response.json();
+      try {
+        console.log("Requesting access grant for first PoP credential:", firstCredential.id);
 
-          if (result.error) {
-            verified.set(credential.id, { success: false, error: result.error });
-          } else {
-            verified.set(credential.id, { success: true, data: result });
-          }
-        } catch (err: any) {
-          verified.set(credential.id, { success: false, error: err.message });
+        // Request access grant for first credential only
+        const accessGrant = await idOSClient.requestAccessGrant(firstCredential.id, {
+          consumerEncryptionPublicKey,
+          consumerAuthPublicKey,
+        });
+
+        // Verify on backend - pass the credential ID so backend can find the grant
+        const response = await fetch(
+          `/api/verify-credential/${idOSClient.user.id}?dataId=${firstCredential.id}`
+        );
+        const result = await response.json();
+
+        if (result.error) {
+          verified.set(firstCredential.id, { success: false, error: result.error });
+        } else {
+          verified.set(firstCredential.id, { success: true, data: result });
         }
+      } catch (err: any) {
+        verified.set(firstCredential.id, { success: false, error: err.message });
       }
 
       setVerifiedCredentials(verified);
       setCurrentStep(3);
 
-      // If we have a verified Radix account, store credentials in server session
+      // If we have a verified Radix account, store first verified credential in server session
       if (radixAccount && idOSClient) {
-        const successfulCredentials = credentials
-          .filter(cred => verified.get(cred.id)?.success)
-          .map(cred => ({
-            credentialId: cred.id,
-            issuerId: cred.issuer_auth_public_key,
-          }));
+        const successfulCredentials = verified.get(firstCredential.id)?.success
+          ? [{
+              credentialId: firstCredential.id,
+              issuerId: firstCredential.issuer_auth_public_key,
+            }]
+          : [];
 
         if (successfulCredentials.length > 0) {
           try {
@@ -549,13 +567,13 @@ export default function Home() {
                     <FileCheck className={`w-5 h-5 ${verifiedCredentials.size > 0 ? "text-black" : "text-white"}`} />
                   </div>
                   <div>
-                    <CardTitle className="text-white">Step 2: Verify Credentials</CardTitle>
+                    <CardTitle className="text-white">Step 2: Verify PoP Credential</CardTitle>
                     <CardDescription className="text-gray-400">
                       {!isConnected
                         ? "Connect your wallet to continue"
                         : credentials.length > 0
-                        ? `Found ${credentials.length} credential(s)`
-                        : "Check your profile to see credentials"
+                        ? `Found ${credentials.length} PoP credential(s)`
+                        : "Check your profile for FaceSign credentials"
                       }
                     </CardDescription>
                   </div>
@@ -619,7 +637,7 @@ export default function Home() {
                 {hasProfile && credentials.length > 0 && verifiedCredentials.size === 0 && (
                   <Button onClick={verifyAllCredentials} disabled={loading} size="lg" className="w-full bg-[#00ffb9] hover:bg-[#00ffb9]/90 text-black font-semibold">
                     {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                    Verify My Credentials
+                    Verify PoP Credential
                   </Button>
                 )}
               </CardContent>
