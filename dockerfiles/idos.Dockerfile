@@ -37,6 +37,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# Install PostgreSQL client
+RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*
+
 # Copy necessary files for production
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
