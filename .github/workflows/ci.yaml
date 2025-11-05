@@ -70,27 +70,6 @@ jobs:
       provenance: false
       with_sbom: false
 
-  deploy_pull_request:
-    if:  ( (github.event_name == 'pull_request' || github.event_name == 'push') && contains(github.event.pull_request.labels.*.name, 'deploy-pr') )
-    name: Deploy PR
-    needs:
-      - push-idos-pop
-    uses: radixdlt/public-iac-resuable-artifacts/.github/workflows/jenkins-deployment.yml@main
-    with:
-      jenkins_job_name: 'kubernetes-deployments/job/idos-pop'
-      github_branch: '${{ github.head_ref }}'
-      application_name: 'idos-pop'
-      hierarchical_namespace: 'idos-pop-ci-pr'
-      create_subnamespace: 'true'
-      kubernetes_namespace: 'idos-pop-pr-${{ github.event.number }}'
-      aws_eks_cluster: 'rdx-works-main-dev'
-      aws_iam_role_name: 'jenkins-idos-pr-deployer'
-      helmfile_environment: 'pr'
-      helmfile_extra_vars: 'ci.tag=${{ github.sha }},ci.prNumber=${{ github.event.number }}'
-    secrets:
-      aws_deployment_account_id: ${{ secrets.AWS_DEV_ACCOUNT_ID }}
-      secrets_account_id: ${{ secrets.SECRETS_ACCOUNT_ID }}
-
   deploy_prod:
     #if: github.event_name == 'release' && github.event.action == 'released'
     name: Deploy PROD
@@ -99,7 +78,8 @@ jobs:
     uses: radixdlt/public-iac-resuable-artifacts/.github/workflows/jenkins-deployment.yml@main
     with:
       github_environment: 'prod'
-      github_branch: '${{ github.ref }}'
+      github_branch: '${{ github.head_ref }}'
+      #github_branch: '${{ github.ref }}'
       jenkins_job_name: 'kubernetes-deployments/job/idos-pop'
       application_name: 'idos-pop'
       kubernetes_namespace: 'idos-pop-mainnet'
