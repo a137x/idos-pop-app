@@ -42,6 +42,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/lib/db ./lib/db
 
 RUN chmod -R +x ./scripts
 
