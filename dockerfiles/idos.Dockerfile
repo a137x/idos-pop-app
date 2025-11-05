@@ -2,14 +2,6 @@
 FROM node:22.21.0-bullseye-slim AS base
 WORKDIR /app
 
-ENV DATABASE_URL="postgresql://user:password@host/database?sslmode=require"
-ENV CONSUMER_SIGNING_SECRET_KEY="your_signing_secret"
-ENV CONSUMER_ENCRYPTION_SECRET_KEY="your_encryption_secret"
-ENV NEXT_PUBLIC_CONSUMER_SIGNING_PUBLIC_KEY="your_signing_public"
-ENV NEXT_PUBLIC_CONSUMER_ENCRYPTION_PUBLIC_KEY="your_encryption_public"
-ENV NEXT_PUBLIC_RADIX_NETWORK="mainnet"
-ENV NEXT_PUBLIC_RADIX_DAPP_DEFINITION_ADDRESS="your_dapp_definition_address"
-
 # Dependencies installation stage (needs build tools for native modules)
 FROM node:22.21.0-bullseye AS deps
 WORKDIR /app
