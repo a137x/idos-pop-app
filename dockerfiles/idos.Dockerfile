@@ -16,12 +16,6 @@ RUN npm ci
 FROM node:22.21.0-bullseye AS builder
 WORKDIR /app
 
-# Set build-time environment variables (required for Next.js build)
-ENV NEXT_PUBLIC_RADIX_NETWORK="mainnet"
-ENV NEXT_PUBLIC_RADIX_DAPP_DEFINITION_ADDRESS="your_dapp_definition_address"
-ENV NEXT_PUBLIC_CONSUMER_SIGNING_PUBLIC_KEY="your_signing_public"
-ENV NEXT_PUBLIC_CONSUMER_ENCRYPTION_PUBLIC_KEY="your_encryption_public"
-
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 
