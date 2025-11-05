@@ -16,6 +16,11 @@ RUN npm ci
 FROM node:22.21.0-bullseye AS builder
 WORKDIR /app
 
+ARG NEXT_PUBLIC_RADIX_NETWORK="mainnet"
+ARG NEXT_PUBLIC_RADIX_DAPP_DEFINITION_ADDRESS="account_rdx129dglkkpjgxk60mz6fc4jpxpev5qtemjkpz87gutg2zg64ty6h2x5j"
+ARG NEXT_PUBLIC_CONSUMER_SIGNING_PUBLIC_KEY="1b8172296e8d4bfe3b408881a5e38c0eeafe43a05fc06e5b5c0193d4806c3f1e"
+ARG NEXT_PUBLIC_CONSUMER_ENCRYPTION_PUBLIC_KEY="FH1nfujF0KwuC0UJYLZyo/bTQyWcVzMzcPCGvZxM1DQ="
+
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 
