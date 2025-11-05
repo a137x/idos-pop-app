@@ -84,15 +84,15 @@ jobs:
       create_subnamespace: 'true'
       kubernetes_namespace: 'idos-pop-pr-${{ github.event.number }}'
       aws_eks_cluster: 'rdx-works-main-dev'
-      aws_iam_role_name: 'jenkins-idos-pop-pr-deployer'
+      aws_iam_role_name: 'jenkins-idos-pr-deployer'
       helmfile_environment: 'pr'
-      helmfile_extra_vars: 'ci.tag=${{ github.sha }},ci.prNumber=${{ github.event.number }},ci.gateway_url=${{ needs.check-gateway-label.outputs.gateway_url }},ci.install_connector=${{ needs.check-install-connector-label.outputs.install_connector }}'
+      helmfile_extra_vars: 'ci.tag=${{ github.sha }},ci.prNumber=${{ github.event.number }}'
     secrets:
       aws_deployment_account_id: ${{ secrets.AWS_DEV_ACCOUNT_ID }}
       secrets_account_id: ${{ secrets.SECRETS_ACCOUNT_ID }}
 
   deploy_prod:
-    if: github.event_name == 'release' && github.event.action == 'released'
+    #if: github.event_name == 'release' && github.event.action == 'released'
     name: Deploy PROD
     needs:
       - push-idos-pop
@@ -104,9 +104,9 @@ jobs:
       application_name: 'idos-pop'
       kubernetes_namespace: 'idos-pop-mainnet'
       aws_eks_cluster: 'rtlj-prod'
-      aws_iam_role_name: 'jenkins-idos-pop-mainnet-deployer'
+      aws_iam_role_name: 'jenkins-idos-mainnet-deployer'
       helmfile_environment: 'prod'
-      helmfile_extra_vars: 'ci.tag=${{ github.sha }},ci.install_connector=true'
+      helmfile_extra_vars: 'ci.tag=${{ github.sha }}'
     secrets:
       aws_deployment_account_id: ${{ secrets.AWS_PROD_ACCOUNT_ID }}
       secrets_account_id: ${{ secrets.SECRETS_ACCOUNT_ID }}
