@@ -1,6 +1,6 @@
 apiVersion: v2
-name: idos
-description: A Helm chart for idos app
+name: idos-pop
+description: A Helm chart for idos-pop app
 
 # A chart can be either an 'application' or a 'library' chart.
 #

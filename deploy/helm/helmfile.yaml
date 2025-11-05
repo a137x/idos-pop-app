@@ -19,7 +19,7 @@ repositories:
     password: {{ requiredEnv "HELM_GH_PASS" }}
 releases:
   - name: idos
-    chart: ./idos
+    chart: ./idos-pop
     values:
       - environments/{{ .Environment.Name }}/idos.yaml.gotmpl
 
