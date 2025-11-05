@@ -41,10 +41,7 @@ ENV NODE_ENV=production
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/lib/db ./lib/db
-
-# Set correct permissions for lib/db files
-RUN chmod -R 755 lib/db
+COPY --from=builder /app/scripts ./scripts
 
 # Expose the port the app runs on
 EXPOSE 3000
