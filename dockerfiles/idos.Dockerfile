@@ -1,44 +1,59 @@
-# Base node image
+# Base image for runtime
 FROM node:22.21.0-bullseye-slim AS base
 WORKDIR /app
 
 ENV DATABASE_URL="postgresql://user:password@host/database?sslmode=require"
+ENV CONSUMER_SIGNING_SECRET_KEY="your_signing_secret"
+ENV CONSUMER_ENCRYPTION_SECRET_KEY="your_encryption_secret"
+ENV NEXT_PUBLIC_CONSUMER_SIGNING_PUBLIC_KEY="your_signing_public"
+ENV NEXT_PUBLIC_CONSUMER_ENCRYPTION_PUBLIC_KEY="your_encryption_public"
+ENV NEXT_PUBLIC_RADIX_NETWORK="mainnet"
+ENV NEXT_PUBLIC_RADIX_DAPP_DEFINITION_ADDRESS="your_dapp_definition_address"
 
-# Enable pnpm
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable && corepack prepare pnpm@10.0.0 --activate 
+# Dependencies installation stage (needs build tools for native modules)
+FROM node:22.21.0-bullseye AS deps
+WORKDIR /app
 
-# Install Turbo globally
-FROM base AS builder
+# Copy package files
+COPY package.json package-lock.json ./
 
-RUN pnpm add -g turbo@2.3.3
+# Install dependencies
+RUN npm ci
 
-# Copy all files
+# Build stage (needs build tools)
+FROM node:22.21.0-bullseye AS builder
+WORKDIR /app
+
+# Set build-time environment variables (required for Next.js build)
+ENV NEXT_PUBLIC_RADIX_NETWORK="mainnet"
+ENV NEXT_PUBLIC_RADIX_DAPP_DEFINITION_ADDRESS="your_dapp_definition_address"
+ENV NEXT_PUBLIC_CONSUMER_SIGNING_PUBLIC_KEY="your_signing_public"
+ENV NEXT_PUBLIC_CONSUMER_ENCRYPTION_PUBLIC_KEY="your_encryption_public"
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy application source
 COPY . .
 
-# Prune the monorepo for the clinch package
-RUN turbo prune idos-radix-verify --docker
-
-# Development dependencies installation stage
-FROM base AS installer
-
-COPY --from=builder /app/out/json/ .
-RUN pnpm install
-
-# Copy source code and build
-COPY --from=builder /app/out/full/ .
-RUN pnpm turbo run build --filter=idos-radix-verify...
+# Build the Next.js application
+RUN npm run build
 
 # Production image
 FROM base AS runner
 WORKDIR /app
 
-# Copy built application
-COPY --from=installer /app/apps/ apps
-COPY --from=installer /app/packages/ packages
-COPY --from=installer /app/node_modules/ node_modules
-COPY --from=installer /app/apps/idos-radix-verify/public/ /app/apps/idos-radix-verify/.next/standalone/apps/idos-radix-verify/public
-COPY --from=installer /app/apps/idos-radix-verify/.next/static /app/apps/idos-radix-verify/.next/standalone/apps/idos-radix-verify/.next/static
+ENV NODE_ENV=production
 
-CMD node apps/idos-radix-verify/.next/standalone/apps/idos-radix-verify/server.js
+# Copy necessary files for production
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+# Expose the port the app runs on
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["node", "server.js"]
