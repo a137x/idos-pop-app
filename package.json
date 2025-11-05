@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "generate-keys": "tsx scripts/generate-keys.ts"
+    "generate-keys": "tsx scripts/generate-keys.ts",
+    "db:migrate": "bash scripts/migrate-db.sh"
   },
   "dependencies": {
     "@idos-network/client": "file:./vendor/idos-sdk-js/packages/client",

@@ -68,5 +68,8 @@ docker:
     name: docker.io/radixdlt
 
 # Set it to true if you want to secret to be deployed.
-docker_secret: 
+docker_secret:
     enabled: true
+
+# Set to true to run database migrations before deployment
+enable_db_migrations: true
