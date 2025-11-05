@@ -41,6 +41,7 @@ ENV NODE_ENV=production
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/lib/db ./lib/db
 
 # Expose the port the app runs on
 EXPOSE 3000
