@@ -36,7 +36,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["/bin/sh", "-c", "-e"]
           args:
-            - cd packages/db && pnpm db:migrate:idos-pop
+            - lib/db/migrate.sql
           env:
           {{- range $secret := .Values.secrets }}
           - name: {{ $secret.env_variable }}
