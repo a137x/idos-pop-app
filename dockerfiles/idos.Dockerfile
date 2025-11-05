@@ -43,6 +43,8 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/scripts ./scripts
 
+RUN chmod -R +x ./scripts
+
 # Expose the port the app runs on
 EXPOSE 3000
 
