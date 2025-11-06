@@ -16,6 +16,7 @@ RUN npm ci
 FROM node:22.21.0-bullseye AS builder
 WORKDIR /app
 
+ENV NEXT_PUBLIC_APP_URL="https://idos.radixdlt.com"
 ENV NEXT_PUBLIC_GATEWAY_URL="https://mainnet.radixdlt.com"
 ENV NEXT_PUBLIC_CONSUMER_SIGNING_PUBLIC_KEY="1b8172296e8d4bfe3b408881a5e38c0eeafe43a05fc06e5b5c0193d4806c3f1e"
 ENV NEXT_PUBLIC_RADIX_NETWORK="mainnet"
