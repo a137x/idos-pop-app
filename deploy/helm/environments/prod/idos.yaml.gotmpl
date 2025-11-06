@@ -39,6 +39,12 @@ secrets:
     aws_secret_key: "radix_backend_account_address"
     secret_key: "radix_backend_account_address"
 
+  - external_secret_name: radix-backend-private-key
+    env_variable: "RADIX_BACKEND_PRIVATE_KEY"
+    aws_secret_name: "rtlj-prod/eks/idos/mainnet/secrets"
+    aws_secret_key: "radix_backend_private_key"
+    secret_key: "radix_backend_private_key"
+
   - external_secret_name: radix-pop-component-address
     env_variable: "RADIX_POP_COMPONENT_ADDRESS"
     aws_secret_name: "rtlj-prod/eks/idos/mainnet/secrets"
