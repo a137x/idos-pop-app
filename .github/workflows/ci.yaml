@@ -71,15 +71,14 @@ jobs:
       with_sbom: false
 
   deploy_prod:
-    #if: github.event_name == 'release' && github.event.action == 'released'
+    if: github.event_name == 'release' && github.event.action == 'released'
     name: Deploy PROD
     needs:
       - push-idos-pop
     uses: radixdlt/public-iac-resuable-artifacts/.github/workflows/jenkins-deployment.yml@main
     with:
       github_environment: 'prod'
-      github_branch: '${{ github.head_ref }}'
-      #github_branch: '${{ github.ref }}'
+      github_branch: '${{ github.ref }}'
       jenkins_job_name: 'kubernetes-deployments/job/idos-pop'
       application_name: 'idos-pop'
       kubernetes_namespace: 'idos-pop-mainnet'
