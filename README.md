@@ -186,7 +186,7 @@ NEXT_PUBLIC_RADIX_DAPP_DEFINITION_ADDRESS=your_backend_account
 RADIX_BACKEND_ACCOUNT_ADDRESS=your_backend_account
 RADIX_BACKEND_PRIVATE_KEY=your_backend_private_key
 RADIX_POP_COMPONENT_ADDRESS=your_component_address
-RADIX_COMPONENT_ADMIN_BADGE=your_admin_badge
+RADIX_COMPONENT_ADMIN_BADGE_ADDRESS=your_admin_badge_address
 
 # Neon Database (for deduplication - see below)
 DATABASE_URL=postgresql://user:password@host/database?sslmode=require
@@ -250,7 +250,7 @@ Set `NEXT_PUBLIC_RADIX_NETWORK` to either:
    - Stokenet addresses start with `account_tdx_2_`
 2. **Backend Account Address** (`RADIX_BACKEND_ACCOUNT_ADDRESS`) - Same address as above
 3. **PoP Component Address** (`RADIX_POP_COMPONENT_ADDRESS`)
-4. **Admin Badge Address** (`RADIX_COMPONENT_ADMIN_BADGE`)
+4. **Admin Badge Address** (`RADIX_COMPONENT_ADMIN_BADGE_ADDRESS`)
 
 **Note:** Both `NEXT_PUBLIC_RADIX_DAPP_DEFINITION_ADDRESS` and `RADIX_BACKEND_ACCOUNT_ADDRESS` should have the same value (your backend account address). The `NEXT_PUBLIC_` version is needed for browser access (ROLA verification in the frontend), while the non-prefixed version is for server-side operations.
 

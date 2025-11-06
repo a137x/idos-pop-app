@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     const backendAccountAddress = process.env.RADIX_BACKEND_ACCOUNT_ADDRESS;
     const backendPrivateKey = process.env.RADIX_BACKEND_PRIVATE_KEY;
     const componentAddress = process.env.RADIX_POP_COMPONENT_ADDRESS;
-    const componentAdminBadge = process.env.RADIX_COMPONENT_ADMIN_BADGE;
+    const componentAdminBadge = process.env.RADIX_COMPONENT_ADMIN_BADGE_ADDRESS;
 
     if (!backendAccountAddress || !backendPrivateKey || !componentAddress || !componentAdminBadge) {
       return NextResponse.json(
