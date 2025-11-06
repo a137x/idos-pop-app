@@ -61,11 +61,11 @@ ingress:
         - path: /
           pathType: ImplementationSpecific
 
-replicaCount: 2
+replicaCount: 1
 
 autoscaling:
-  enabled: true
-  minReplicas: 2
+  enabled: false
+  minReplicas: 1
   maxReplicas: 4
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 70
