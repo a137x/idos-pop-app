@@ -1,0 +1,20 @@
+{{- if .Values.metrics.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "idos-pop-dapp.serviceAccountName" . }}-metrics
+  labels:
+    release: prometheus-operator
+    {{- include "idos-pop-dapp.labels" . | nindent 4 }}
+spec:
+  endpoints:
+  - port: metrics
+  namespaceSelector:
+    matchNames:
+    - {{ .Release.Namespace | quote }}
+  selector:
+    matchLabels:
+      {{- include "idos-pop-dapp.selectorLabels" . | nindent 6 }}
+{{- end }}
+

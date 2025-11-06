@@ -1,0 +1,61 @@
+environments:
+  dev: {}
+  pr: {}
+  prod: {}
+---
+helmDefaults:
+  verify: false
+  wait: true
+  timeout: 300
+  recreatePods: false
+  force: false
+  createNamespace: false
+repositories:
+  - name: bitnami
+    url: https://charts.bitnami.com/bitnami
+  - name: rdx-works
+    url: https://raw.githubusercontent.com/radixdlt/helm-charts/master/
+    username: {{ requiredEnv "HELM_GH_USER" }}
+    password: {{ requiredEnv "HELM_GH_PASS" }}
+releases:
+  - name: idos
+    chart: ./idos-pop
+    values:
+      - environments/{{ .Environment.Name }}/idos.yaml.gotmpl
+
+  - name: postgres
+    chart: bitnami/postgresql
+    version:  12.12.10
+    installed: {{ eq .Environment.Name "pr" }}
+    values:
+      - auth:
+          postgresPassword: "secretString123"
+          database: idos_pop
+        image:
+          registry: public.ecr.aws
+          repository: u2o0d2a1/bitnami-postgresql
+          tag: 15.4.0-debian-11-r56
+        primary:
+          persistence:
+            enabled: false
+          resources:
+            requests:
+              cpu: "100m"
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+
+  - name: developer-access
+    chart: rdx-works/developer-access
+    version: 1.0.0
+    values:
+      - project: idos
+      - environments/{{ .Environment.Name }}/developer-access.yaml.gotmpl
+
+  - name: alertmanager
+    chart: rdx-works/alertmanager-configs
+    version: 1.1.0
+    installed: {{ ne .Environment.Name "pr" }}
+    values:
+      - environments/{{ .Environment.Name }}/alertmanager.yaml.gotmpl

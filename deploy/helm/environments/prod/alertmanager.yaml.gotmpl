@@ -1,0 +1,8 @@
+alertmanager:
+  env: "prod"
+  nameOverride: "idos-amcfg"
+  slackConfig:
+    channel: "feed--alerts-idos-prod"
+  secrets:
+    region: eu-west-2
+    name: "rtlj-prod/eks/idos/mainnet/alertmanager-integration-keys"
