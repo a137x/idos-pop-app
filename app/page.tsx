@@ -7,7 +7,7 @@ import { createIDOSClient, type idOSClient as IdOSClientType } from "@idos-netwo
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Wallet, FileCheck, UserCheck, Loader2, X } from "lucide-react";
+import { CheckCircle2, Wallet, FileCheck, UserCheck, Loader2, X, Gift } from "lucide-react";
 import { useAppKit } from "@reown/appkit/react";
 import Image from "next/image";
 import { OneTimeDataRequestBuilder } from "@radixdlt/radix-dapp-toolkit";
@@ -522,11 +522,11 @@ export default function Home() {
                   <UserCheck className={`w-5 h-5 ${radixAccount ? "text-black" : "text-white"}`} />
                 </div>
                 <div>
-                  <CardTitle className="text-white">Step 1: Connect Radix Wallet</CardTitle>
+                  <CardTitle className="text-white">Step 1: Connect Radix Account</CardTitle>
                   <CardDescription className="text-gray-400">
                     {radixAccount
-                      ? "Radix wallet connected successfully"
-                      : "Connect your Radix wallet to get started"
+                      ? "Radix account connected successfully"
+                      : "Connect your Radix account to get started"
                     }
                   </CardDescription>
                 </div>
@@ -569,7 +569,7 @@ export default function Home() {
 
                   {!radixWalletPending && !radixVerifying && (
                     <p className="text-center text-sm text-gray-400">
-                      Click to connect your Radix wallet and verify ownership
+                      Click to connect your Radix account and verify ownership
                     </p>
                   )}
 
@@ -871,7 +871,7 @@ export default function Home() {
                     </h3>
                     <p className="text-gray-400 mb-4">
                       {mintedTxId
-                        ? "Your Proof-of-Personhood NFT has been sent to your Radix wallet."
+                        ? "Your Proof-of-Personhood NFT has been sent to your Radix account."
                         : "All steps complete! You can now receive your Proof-of-Personhood NFT."
                       }
                     </p>
@@ -912,6 +912,55 @@ export default function Home() {
                     )}
                   </div>
                   )}
+                </div>
+              </CardContent>
+            )}
+          </Card>
+
+          {/* Step 5: Earn with Radix Rewards */}
+          <Card className="bg-[#1a1a1a] border-[#FF43CA]/30 relative overflow-hidden transition-colors duration-300 group">
+            {/* Card subtle glow - on hover */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#FF43CA]/5 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <CardHeader className="relative z-10">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  mintedTxId ? "bg-[#FF43CA] shadow-[0_0_20px_rgba(255,67,202,0.4)]" : "bg-gray-700"
+                }`}>
+                  <Gift className={`w-5 h-5 ${mintedTxId ? "text-black" : "text-white"}`} />
+                </div>
+                <div>
+                  <CardTitle className="text-white">Step 5: Earn with Radix Rewards</CardTitle>
+                  <CardDescription className="text-gray-400">
+                    {!mintedTxId
+                      ? "Complete previous steps to unlock"
+                      : "Use your PoP NFT to unlock an exclusive quest"
+                    }
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            {mintedTxId && (
+              <CardContent className="relative z-10">
+                <div className="text-center p-8 bg-black/30 border border-gray-700 rounded-lg">
+                  <Gift className="w-16 h-16 mx-auto mb-4 text-[#FF43CA]" />
+                  <h3 className="text-xl font-bold mb-2 text-white">
+                    Unlock Exclusive Rewards!
+                  </h3>
+                  <p className="text-gray-400 mb-6">
+                    Your Proof-of-Personhood NFT unlocks a quest in Radix Rewards. Complete the quest to earn points and climb the leaderboard for rewards!
+                  </p>
+                  <a
+                    href="https://incentives.radixdlt.com/dashboard"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button
+                      size="lg"
+                      className="bg-[#FF43CA] hover:bg-[#FF43CA]/90 text-black font-semibold"
+                    >
+                      Join Radix Rewards
+                    </Button>
+                  </a>
                 </div>
               </CardContent>
             )}
