@@ -947,7 +947,8 @@ export default function Home() {
                     Unlock Exclusive Rewards!
                   </h3>
                   <p className="text-gray-400 mb-6">
-                    Your Proof-of-Personhood NFT unlocks a quest in Radix Rewards. Complete the quest to earn points and climb the leaderboard for rewards!
+                    Your Proof-of-Personhood NFT unlocks a quest in Radix Rewards, the 1 billion XRD incentives campaign.
+                    Click below to complete the quest and earn more points in Radix Rewards Season 1.
                   </p>
                   <a
                     href="https://incentives.radixdlt.com/dashboard"
