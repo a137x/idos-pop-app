@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount, useDisconnect } from "wagmi";
+import { useAccount, useDisconnect, useWalletClient } from "wagmi";
 import { BrowserProvider } from "ethers";
 import { createIDOSClient, type idOSClient as IdOSClientType } from "@idos-network/client";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,9 @@ import { useRadixAccounts } from "@/lib/hooks/useRadixAccounts";
 import { getGatewayUrl, getDashboardUrl } from "@/lib/radix/network-config";
 
 export default function Home() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, connector } = useAccount();
   const { disconnect } = useDisconnect();
+  const { data: walletClient } = useWalletClient();
   const { open } = useAppKit();
   const { rdt } = useRadix();
   const radixAccounts = useRadixAccounts();
@@ -116,7 +117,13 @@ export default function Home() {
       }
 
       // Get user's signer from connected wallet
-      const provider = new BrowserProvider((window as any).ethereum);
+      if (!walletClient) {
+        setError("Wallet client not available. Please reconnect your wallet.");
+        return;
+      }
+
+      // Get the provider from the wallet client
+      const provider = new BrowserProvider(walletClient as any);
       const signer = await provider.getSigner();
 
       // Set signer and login
@@ -947,7 +954,8 @@ export default function Home() {
                     Unlock Exclusive Rewards!
                   </h3>
                   <p className="text-gray-400 mb-6">
-                    Your Proof-of-Personhood NFT unlocks a quest in Radix Rewards. Complete the quest to earn points and climb the leaderboard for rewards!
+                    Your Proof-of-Personhood NFT unlocks a quest in Radix Rewards, the 1 billion XRD incentives campaign.
+                    Click below to complete the quest and earn more points in Radix Rewards Season 1.
                   </p>
                   <a
                     href="https://incentives.radixdlt.com/dashboard"
