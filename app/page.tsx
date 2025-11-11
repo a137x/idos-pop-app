@@ -807,6 +807,11 @@ export default function Home() {
                           </Badge>
                         )}
                       </div>
+                      {verifiedCredentials.has(cred.id) && !verifiedCredentials.get(cred.id)?.success && (
+                        <div className="mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
+                          Error: {verifiedCredentials.get(cred.id)?.error || "Unknown error"}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
