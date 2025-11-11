@@ -38,6 +38,7 @@ export default function Home() {
   const [depositRuleAccepts, setDepositRuleAccepts] = useState<boolean | null>(null);
   const [minting, setMinting] = useState(false);
   const [mintedTxId, setMintedTxId] = useState<string | null>(null);
+  const [radixAccountChecked, setRadixAccountChecked] = useState(false);
 
   // Track pending time and show flashing install after 15 seconds
   useEffect(() => {
@@ -66,20 +67,30 @@ export default function Home() {
     setRadixWalletPending(false);
     setMinting(false);
     setMintedTxId(null);
+    setRadixAccountChecked(false);
   };
 
-  // Step 1: Connect wallet via WalletConnect modal
+  // Step 2: Connect EVM wallet via WalletConnect modal
   const handleWalletClick = () => {
     open();
   };
 
-  // Handle disconnect
+  // Handle EVM wallet disconnect
   const handleDisconnect = () => {
     disconnect();
-    resetState();
+    // Reset all state except Radix connection
+    setIdOSClient(null);
+    setHasProfile(null);
+    setCredentials([]);
+    setVerifiedCredentials(new Map());
+    setLoading(false);
+    setError("");
+    setCurrentStep(radixAccount ? 2 : 1);
+    setMinting(false);
+    setMintedTxId(null);
   };
 
-  // Step 2: Initialize idOS and check profile
+  // Step 3: Initialize idOS and check profile
   const initializeIdOS = async () => {
     if (!address || !isConnected) return;
 
@@ -113,7 +124,7 @@ export default function Home() {
       const loggedInClient = await clientWithSigner.logIn();
 
       setIdOSClient(loggedInClient);
-      setCurrentStep(2);
+      setCurrentStep(3);
 
       // Fetch credentials and filter to only PoP credentials (FaceSign)
       const allCredentials = await loggedInClient.getAllCredentials();
@@ -150,7 +161,7 @@ export default function Home() {
     }
   };
 
-  // Step 3: Verify first PoP credential only
+  // Step 4: Verify first PoP credential only
   const verifyAllCredentials = async () => {
     if (!idOSClient || idOSClient.state !== "logged-in" || credentials.length === 0) return;
 
@@ -196,7 +207,7 @@ export default function Home() {
       }
 
       setVerifiedCredentials(verified);
-      setCurrentStep(3);
+      setCurrentStep(4);
 
       // If we have a verified Radix account, store first verified credential in server session
       if (radixAccount && idOSClient) {
@@ -294,7 +305,7 @@ export default function Home() {
     setError("");
   };
 
-  // Step 4: Connect and verify Radix account with ROLA
+  // Step 1: Connect and verify Radix account with ROLA
   const connectRadixAccount = async () => {
     if (!rdt) {
       setError("Radix dApp Toolkit not initialized");
@@ -402,6 +413,10 @@ export default function Home() {
 
       // Success! Account verified and credentials stored
       setRadixAccount(account.address);
+      setRadixAccountChecked(true);
+
+      // Move to step 2 after Radix wallet is connected
+      setCurrentStep(2);
 
       // Check account deposit rule
       await checkAccountDepositRule(account.address);
@@ -417,13 +432,21 @@ export default function Home() {
     }
   };
 
-  // Disconnect Radix wallet
+  // Disconnect Radix wallet - resets to step 1
   const disconnectRadixWallet = () => {
     setRadixAccount(null);
     setRadixVerifying(false);
     setRadixWalletPending(false);
     setMinting(false);
     setMintedTxId(null);
+    setRadixAccountChecked(false);
+    // Also reset EVM wallet and credentials since they depend on Radix
+    disconnect();
+    setIdOSClient(null);
+    setHasProfile(null);
+    setCredentials([]);
+    setVerifiedCredentials(new Map());
+    setCurrentStep(1);
     // Note: We don't call rdt.disconnect() because that would disconnect
     // the entire wallet connection. We just clear our verification state.
   };
@@ -487,49 +510,99 @@ export default function Home() {
 
         {/* Main Content */}
         <div className="max-w-4xl mx-auto space-y-6">
-          {/* Step 1: Connect Wallet */}
+          {/* Step 1: Connect Radix Wallet */}
           <Card className="bg-[#1a1a1a] border-[#00ffb9]/30 relative overflow-hidden transition-colors duration-300 group">
             {/* Card subtle glow - on hover */}
             <div className="absolute inset-0 bg-gradient-to-br from-[#00ffb9]/5 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <CardHeader className="relative z-10">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                  isConnected && hasProfile && credentials.length > 0 ? "bg-[#00ffb9] shadow-[0_0_20px_rgba(0,255,185,0.4)]" : isConnected ? "bg-orange-500" : "bg-gray-700"
+                  radixAccount ? "bg-[#00ffb9] shadow-[0_0_20px_rgba(0,255,185,0.4)]" : currentStep >= 1 ? "bg-orange-500" : "bg-gray-700"
                 }`}>
-                  <Wallet className={`w-5 h-5 ${isConnected && hasProfile && credentials.length > 0 ? "text-black" : "text-white"}`} />
+                  <UserCheck className={`w-5 h-5 ${radixAccount ? "text-black" : "text-white"}`} />
                 </div>
                 <div>
-                  <CardTitle className="text-white">Step 1: Connect EVM Wallet</CardTitle>
-                  <CardDescription className="text-gray-400">Connect an EVM compatible wallet</CardDescription>
+                  <CardTitle className="text-white">Step 1: Connect Radix Wallet</CardTitle>
+                  <CardDescription className="text-gray-400">
+                    {radixAccount
+                      ? "Radix wallet connected successfully"
+                      : "Connect your Radix wallet to get started"
+                    }
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              {!isConnected ? (
-                <Button onClick={handleWalletClick} size="lg" className="w-full bg-[#00ffb9] hover:bg-[#00ffb9]/90 text-black font-semibold">
-                  Connect Wallet
-                </Button>
-              ) : (
+            <CardContent className="relative z-10">
+              {!radixAccount ? (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-[#00ffb9]/10 border-2 border-[#00ffb9]/30 rounded-lg">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <CheckCircle2 className="w-5 h-5 text-[#00ffb9] shrink-0" />
-                      <span className="text-sm font-mono break-all text-[#00ffb9]">{address}</span>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={handleDisconnect} className="ml-2 shrink-0 border-gray-600 bg-transparent text-white hover:bg-[#00ffb9]/10 hover:border-[#00ffb9] hover:text-[#00ffb9]">
-                      Disconnect
+                  <div className="relative">
+                    <Button
+                      onClick={radixWalletPending ? undefined : connectRadixAccount}
+                      disabled={radixWalletPending || radixVerifying || !rdt}
+                      size="lg"
+                      className="w-full bg-[#00ffb9] hover:bg-[#00ffb9]/90 text-black font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {radixWalletPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          Sign In Radix Wallet
+                        </>
+                      ) : radixVerifying ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          Verifying Account Ownership...
+                        </>
+                      ) : (
+                        "Connect Radix Wallet"
+                      )}
                     </Button>
+                    {radixWalletPending && (
+                      <button
+                        onClick={cancelRadixConnection}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-black/20 transition-colors z-10"
+                        aria-label="Cancel request"
+                      >
+                        <X className="w-5 h-5 text-black" />
+                      </button>
+                    )}
                   </div>
 
-                  {(hasProfile === null || hasProfile === false) && (
-                    <Button onClick={initializeIdOS} disabled={loading} className="w-full bg-[#00ffb9] hover:bg-[#00ffb9]/90 text-black font-semibold">
-                      {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                      Check idOS Profile
-                    </Button>
+                  {!radixWalletPending && !radixVerifying && (
+                    <p className="text-center text-sm text-gray-400">
+                      Click to connect your Radix wallet and verify ownership
+                    </p>
                   )}
 
+                  {radixWalletPending && (
+                    <p className="text-center text-sm text-gray-400">
+                      Check your Radix Wallet app to approve the request
+                    </p>
+                  )}
+
+                  {/* Install Wallet Link - always visible when not connected */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                      <span>New to Radix?</span>
+                      <a
+                        href="https://wallet.radixdlt.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`text-[#00ffb9] hover:text-[#00ffb9]/80 transition-all font-medium ${
+                          showFlashingInstall ? 'animate-[glow_2s_ease-in-out_infinite]' : ''
+                        }`}
+                      >
+                        Install Wallet
+                      </a>
+                    </div>
+                    {showFlashingInstall && (
+                      <p className="text-center text-xs text-gray-500">
+                        After installing the extension, please reload this page
+                      </p>
+                    )}
+                  </div>
+
                   {/* Error Display for Step 1 */}
-                  {error && hasProfile === false && (
+                  {error && !radixAccount && currentStep === 1 && (
                     <div className="p-4 bg-red-500/10 border-2 border-red-500/30 rounded-lg">
                       <div className="text-red-400">
                         {error.includes('https://') ? (
@@ -551,11 +624,101 @@ export default function Home() {
                     </div>
                   )}
                 </div>
+              ) : (
+                <div className="flex items-center justify-between p-4 bg-[#00ffb9]/10 border-2 border-[#00ffb9]/30 rounded-lg">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <CheckCircle2 className="w-5 h-5 text-[#00ffb9] shrink-0" />
+                    <span className="text-sm font-mono break-all text-[#00ffb9]">{radixAccount}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={disconnectRadixWallet}
+                    className="ml-2 shrink-0 border-gray-600 bg-transparent text-white hover:bg-[#00ffb9]/10 hover:border-[#00ffb9] hover:text-[#00ffb9]"
+                  >
+                    Disconnect
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Step 2: Verify Credentials */}
+          {/* Step 2: Connect EVM Wallet */}
+          <Card className="bg-[#1a1a1a] border-[#00ffb9]/30 relative overflow-hidden transition-colors duration-300 group">
+            {/* Card subtle glow - on hover */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#00ffb9]/5 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <CardHeader className="relative z-10">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  isConnected && hasProfile && credentials.length > 0 ? "bg-[#00ffb9] shadow-[0_0_20px_rgba(0,255,185,0.4)]" : currentStep >= 2 ? "bg-orange-500" : "bg-gray-700"
+                }`}>
+                  <Wallet className={`w-5 h-5 ${isConnected && hasProfile && credentials.length > 0 ? "text-black" : "text-white"}`} />
+                </div>
+                <div>
+                  <CardTitle className="text-white">Step 2: Connect EVM Wallet</CardTitle>
+                  <CardDescription className="text-gray-400">
+                    {!radixAccount
+                      ? "Connect Radix wallet first to continue"
+                      : "Connect an EVM compatible wallet"
+                    }
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            {radixAccount && (
+              <CardContent>
+                {!isConnected ? (
+                  <Button onClick={handleWalletClick} size="lg" className="w-full bg-[#00ffb9] hover:bg-[#00ffb9]/90 text-black font-semibold">
+                    Connect Wallet
+                  </Button>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-[#00ffb9]/10 border-2 border-[#00ffb9]/30 rounded-lg">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <CheckCircle2 className="w-5 h-5 text-[#00ffb9] shrink-0" />
+                        <span className="text-sm font-mono break-all text-[#00ffb9]">{address}</span>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={handleDisconnect} className="ml-2 shrink-0 border-gray-600 bg-transparent text-white hover:bg-[#00ffb9]/10 hover:border-[#00ffb9] hover:text-[#00ffb9]">
+                        Disconnect
+                      </Button>
+                    </div>
+
+                    {(hasProfile === null || hasProfile === false) && (
+                      <Button onClick={initializeIdOS} disabled={loading} className="w-full bg-[#00ffb9] hover:bg-[#00ffb9]/90 text-black font-semibold">
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        Check idOS Profile
+                      </Button>
+                    )}
+
+                    {/* Error Display for Step 2 */}
+                    {error && hasProfile === false && (
+                      <div className="p-4 bg-red-500/10 border-2 border-red-500/30 rounded-lg">
+                        <div className="text-red-400">
+                          {error.includes('https://') ? (
+                            <>
+                              {error.split('https://')[0]}
+                              <a
+                                href={`https://${error.split('https://')[1]}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline hover:text-red-300"
+                              >
+                                https://{error.split('https://')[1].split('?')[0]}
+                              </a>
+                            </>
+                          ) : (
+                            <p>{error}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            )}
+          </Card>
+
+          {/* Step 3: Verify Credentials */}
           <Card className="bg-[#1a1a1a] border-[#00ffb9]/30 relative overflow-hidden transition-colors duration-300 group">
             {/* Card subtle glow - on hover */}
             <div className="absolute inset-0 bg-gradient-to-br from-[#00ffb9]/5 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -563,15 +726,15 @@ export default function Home() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                    verifiedCredentials.size > 0 ? "bg-[#00ffb9] shadow-[0_0_20px_rgba(0,255,185,0.4)]" : currentStep >= 2 ? "bg-orange-500" : "bg-gray-700"
+                    verifiedCredentials.size > 0 ? "bg-[#00ffb9] shadow-[0_0_20px_rgba(0,255,185,0.4)]" : currentStep >= 3 ? "bg-orange-500" : "bg-gray-700"
                   }`}>
                     <FileCheck className={`w-5 h-5 ${verifiedCredentials.size > 0 ? "text-black" : "text-white"}`} />
                   </div>
                   <div>
-                    <CardTitle className="text-white">Step 2: Verify PoP Credential</CardTitle>
+                    <CardTitle className="text-white">Step 3: Verify PoP Credential</CardTitle>
                     <CardDescription className="text-gray-400">
                       {!isConnected
-                        ? "Connect your wallet to continue"
+                        ? "Connect your EVM wallet to continue"
                         : credentials.length > 0
                         ? `Found ${credentials.length} PoP credential(s)`
                         : "Check your profile for FaceSign credentials"
@@ -581,7 +744,7 @@ export default function Home() {
                 </div>
               </div>
             </CardHeader>
-            {isConnected && (
+            {isConnected && radixAccount && (
               <CardContent className="space-y-4 relative z-10">
                 {/* idOS Enclave Container - always present when connected */}
                 <div className="p-4 border-2 border-dashed border-gray-700 rounded-lg bg-black/30">
@@ -645,219 +808,111 @@ export default function Home() {
             )}
           </Card>
 
-          {/* Step 3: Claim Radix PoP NFT */}
+          {/* Step 4: Send NFT */}
           <Card className="bg-[#1a1a1a] border-[#00ffb9]/30 relative overflow-hidden transition-colors duration-300 group">
             {/* Card subtle glow - on hover */}
             <div className="absolute inset-0 bg-gradient-to-br from-[#00ffb9]/5 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <CardHeader className="relative z-10">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                  radixAccount ? "bg-[#00ffb9] shadow-[0_0_20px_rgba(0,255,185,0.4)]" : currentStep >= 3 ? "bg-orange-500" : "bg-gray-700"
+                  mintedTxId ? "bg-[#00ffb9] shadow-[0_0_20px_rgba(0,255,185,0.4)]" : currentStep >= 4 ? "bg-orange-500" : "bg-gray-700"
                 }`}>
-                  <UserCheck className={`w-5 h-5 ${radixAccount ? "text-black" : "text-white"}`} />
+                  <CheckCircle2 className={`w-5 h-5 ${mintedTxId ? "text-black" : "text-white"}`} />
                 </div>
                 <div>
-                  <CardTitle className="text-white">Step 3: Claim Your PoP NFT</CardTitle>
+                  <CardTitle className="text-white">Step 4: Claim Your PoP NFT</CardTitle>
                   <CardDescription className="text-gray-400">
                     {verifiedCredentials.size === 0
                       ? "Verify your credentials to continue"
-                      : radixAccount
-                      ? "Radix wallet connected successfully"
-                      : "Connect Radix wallet to receive your Proof-of-Personhood NFT"
+                      : mintedTxId
+                      ? "NFT successfully minted!"
+                      : "Receive your Proof-of-Personhood NFT"
                     }
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
-            {verifiedCredentials.size > 0 && (
+            {verifiedCredentials.size > 0 && radixAccount && (
               <CardContent className="relative z-10">
-                {!radixAccount ? (
-                  <div className="space-y-4">
-                    <div className="relative">
+                <div className="space-y-4">
+                  {/* Deposit Rule Warning */}
+                  {!mintedTxId && depositRuleAccepts === false && (
+                    <div className="flex items-center justify-between p-4 bg-orange-500/10 border-2 border-orange-500/30 rounded-lg">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <X className="w-5 h-5 text-orange-500 shrink-0" />
+                        <span className="text-sm text-orange-400">
+                          <span className="font-semibold">Deposits Disabled:</span> Your Radix account has third-party deposits disabled. Please enable deposits in your Radix Wallet app.
+                        </span>
+                      </div>
                       <Button
-                        onClick={radixWalletPending ? undefined : connectRadixAccount}
-                        disabled={radixWalletPending || radixVerifying || !rdt}
-                        size="lg"
-                        className="w-full bg-[#00ffb9] hover:bg-[#00ffb9]/90 text-black font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => radixAccount && checkAccountDepositRule(radixAccount)}
+                        disabled={depositRuleChecking}
+                        size="sm"
+                        className="ml-2 shrink-0 bg-orange-500 hover:bg-orange-600 text-white font-semibold"
                       >
-                        {radixWalletPending ? (
+                        {depositRuleChecking ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                            Sign In Radix Wallet
-                          </>
-                        ) : radixVerifying ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                            Verifying Account Ownership...
+                            Checking...
                           </>
                         ) : (
-                          "Connect Radix Wallet"
+                          "Check Again"
                         )}
                       </Button>
-                      {radixWalletPending && (
-                        <button
-                          onClick={cancelRadixConnection}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-black/20 transition-colors z-10"
-                          aria-label="Cancel request"
-                        >
-                          <X className="w-5 h-5 text-black" />
-                        </button>
-                      )}
                     </div>
+                  )}
 
-                    {!radixWalletPending && !radixVerifying && (
-                      <p className="text-center text-sm text-gray-400">
-                        Click to connect your Radix wallet and verify ownership
-                      </p>
-                    )}
+                  {/* Only show verification complete section if deposits are enabled or NFT is minted */}
+                  {(depositRuleAccepts !== false || mintedTxId) && (
+                    <div className="text-center p-8 bg-black/30 border border-gray-700 rounded-lg">
+                    <UserCheck className="w-16 h-16 mx-auto mb-4 text-[#00ffb9]" />
+                    <h3 className="text-xl font-bold mb-2 text-white">
+                      {mintedTxId ? "NFT Minted Successfully!" : "Ready to Claim!"}
+                    </h3>
+                    <p className="text-gray-400 mb-4">
+                      {mintedTxId
+                        ? "Your Proof-of-Personhood NFT has been sent to your Radix wallet."
+                        : "All steps complete! You can now receive your Proof-of-Personhood NFT."
+                      }
+                    </p>
 
-                    {radixWalletPending && (
-                      <p className="text-center text-sm text-gray-400">
-                        Check your Radix Wallet app to approve the request
-                      </p>
-                    )}
-
-                    {/* Install Wallet Link - always visible when not connected */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                        <span>New to Radix?</span>
+                    {!mintedTxId ? (
+                      <Button
+                        onClick={mintPopNft}
+                        disabled={minting || depositRuleChecking || depositRuleAccepts === false}
+                        size="lg"
+                        className="bg-[#00ffb9] hover:bg-[#00ffb9]/90 text-black font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {minting ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            Minting NFT...
+                          </>
+                        ) : depositRuleChecking ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            Checking Account...
+                          </>
+                        ) : (
+                          "Send NFT"
+                        )}
+                      </Button>
+                    ) : (
+                      <div className="p-3 bg-[#00ffb9]/10 border border-[#00ffb9]/30 rounded">
+                        <p className="text-xs text-gray-400 mb-1">Transaction ID:</p>
                         <a
-                          href="https://wallet.radixdlt.com/"
+                          href={`${getDashboardUrl()}/transaction/${mintedTxId}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`text-[#00ffb9] hover:text-[#00ffb9]/80 transition-all font-medium ${
-                            showFlashingInstall ? 'animate-[glow_2s_ease-in-out_infinite]' : ''
-                          }`}
+                          className="text-sm font-mono text-[#00ffb9] break-all hover:text-[#00ffb9]/80 transition-colors underline"
                         >
-                          Install Wallet
+                          {mintedTxId}
                         </a>
                       </div>
-                      {showFlashingInstall && (
-                        <p className="text-center text-xs text-gray-500">
-                          After installing the extension, please reload this page
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Error Display for Step 3 */}
-                    {error && !radixAccount && (
-                      <div className="p-4 bg-red-500/10 border-2 border-red-500/30 rounded-lg">
-                        <div className="text-red-400">
-                          {error.includes('https://') ? (
-                            <>
-                              {error.split('https://')[0]}
-                              <a
-                                href={`https://${error.split('https://')[1]}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline hover:text-red-300"
-                              >
-                                https://{error.split('https://')[1].split('?')[0]}
-                              </a>
-                            </>
-                          ) : (
-                            <p>{error}</p>
-                          )}
-                        </div>
-                      </div>
                     )}
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-[#00ffb9]/10 border-2 border-[#00ffb9]/30 rounded-lg">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <CheckCircle2 className="w-5 h-5 text-[#00ffb9] shrink-0" />
-                        <span className="text-sm font-mono break-all text-[#00ffb9]">{radixAccount}</span>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={disconnectRadixWallet}
-                        className="ml-2 shrink-0 border-gray-600 bg-transparent text-white hover:bg-[#00ffb9]/10 hover:border-[#00ffb9] hover:text-[#00ffb9]"
-                      >
-                        Disconnect
-                      </Button>
-                    </div>
-
-                    {/* Deposit Rule Warning */}
-                    {!mintedTxId && depositRuleAccepts === false && (
-                      <div className="flex items-center justify-between p-4 bg-orange-500/10 border-2 border-orange-500/30 rounded-lg">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <X className="w-5 h-5 text-orange-500 shrink-0" />
-                          <span className="text-sm text-orange-400">
-                            <span className="font-semibold">Deposits Disabled:</span> Your Radix account has third-party deposits disabled. Please enable deposits in your Radix Wallet app.
-                          </span>
-                        </div>
-                        <Button
-                          onClick={() => radixAccount && checkAccountDepositRule(radixAccount)}
-                          disabled={depositRuleChecking}
-                          size="sm"
-                          className="ml-2 shrink-0 bg-orange-500 hover:bg-orange-600 text-white font-semibold"
-                        >
-                          {depositRuleChecking ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                              Checking...
-                            </>
-                          ) : (
-                            "Check Again"
-                          )}
-                        </Button>
-                      </div>
-                    )}
-
-                    {/* Only show verification complete section if deposits are enabled or NFT is minted */}
-                    {(depositRuleAccepts !== false || mintedTxId) && (
-                      <div className="text-center p-8 bg-black/30 border border-gray-700 rounded-lg">
-                      <UserCheck className="w-16 h-16 mx-auto mb-4 text-[#00ffb9]" />
-                      <h3 className="text-xl font-bold mb-2 text-white">
-                        {mintedTxId ? "NFT Minted Successfully!" : "Verification Complete!"}
-                      </h3>
-                      <p className="text-gray-400 mb-4">
-                        {mintedTxId
-                          ? "Your Proof-of-Personhood NFT has been sent to your Radix wallet."
-                          : "Your Radix account has been verified with ROLA. You can now receive your Proof-of-Personhood NFT."
-                        }
-                      </p>
-
-                      {!mintedTxId ? (
-                        <Button
-                          onClick={mintPopNft}
-                          disabled={minting || depositRuleChecking || depositRuleAccepts === false}
-                          size="lg"
-                          className="bg-[#00ffb9] hover:bg-[#00ffb9]/90 text-black font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {minting ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                              Minting NFT...
-                            </>
-                          ) : depositRuleChecking ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                              Checking Account...
-                            </>
-                          ) : (
-                            "Send NFT"
-                          )}
-                        </Button>
-                      ) : (
-                        <div className="p-3 bg-[#00ffb9]/10 border border-[#00ffb9]/30 rounded">
-                          <p className="text-xs text-gray-400 mb-1">Transaction ID:</p>
-                          <a
-                            href={`${getDashboardUrl()}/transaction/${mintedTxId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm font-mono text-[#00ffb9] break-all hover:text-[#00ffb9]/80 transition-colors underline"
-                          >
-                            {mintedTxId}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
               </CardContent>
             )}
           </Card>
