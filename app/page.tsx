@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount, useDisconnect } from "wagmi";
+import { useAccount, useDisconnect, useWalletClient } from "wagmi";
 import { BrowserProvider } from "ethers";
 import { createIDOSClient, type idOSClient as IdOSClientType } from "@idos-network/client";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { getGatewayUrl, getDashboardUrl } from "@/lib/radix/network-config";
 export default function Home() {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
+  const { data: walletClient } = useWalletClient();
   const { open } = useAppKit();
   const { rdt } = useRadix();
   const radixAccounts = useRadixAccounts();
@@ -684,9 +685,20 @@ export default function Home() {
                     </div>
 
                     {(hasProfile === null || hasProfile === false) && (
-                      <Button onClick={initializeIdOS} disabled={loading} className="w-full bg-[#00ffb9] hover:bg-[#00ffb9]/90 text-black font-semibold">
-                        {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                        Check idOS Profile
+                      <Button onClick={initializeIdOS} disabled={loading || !walletClient} className="w-full bg-[#00ffb9] hover:bg-[#00ffb9]/90 text-black font-semibold">
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            Checking Profile...
+                          </>
+                        ) : !walletClient ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            Loading Wallet...
+                          </>
+                        ) : (
+                          "Check idOS Profile"
+                        )}
                       </Button>
                     )}
 
