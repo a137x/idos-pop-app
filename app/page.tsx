@@ -93,7 +93,10 @@ export default function Home() {
 
   // Step 3: Initialize idOS and check profile
   const initializeIdOS = async () => {
-    if (!address || !isConnected) return;
+    if (!address || !isConnected) {
+      setError("Please connect your EVM wallet first.");
+      return;
+    }
 
     try {
       setLoading(true);
@@ -176,7 +179,20 @@ export default function Home() {
 
   // Step 4: Verify first PoP credential only
   const verifyAllCredentials = async () => {
-    if (!idOSClient || idOSClient.state !== "logged-in" || credentials.length === 0) return;
+    if (!idOSClient) {
+      setError("idOS client not initialized. Please reconnect your wallet and check your profile again.");
+      return;
+    }
+
+    if (idOSClient.state !== "logged-in") {
+      setError("Not logged in to idOS. Please check your profile again.");
+      return;
+    }
+
+    if (!credentials || credentials.length === 0) {
+      setError("No credentials found. Please check your idOS profile again.");
+      return;
+    }
 
     try {
       setLoading(true);
