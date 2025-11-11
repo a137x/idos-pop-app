@@ -117,8 +117,20 @@ export default function Home() {
       }
 
       // Get user's signer from connected wallet
-      const provider = new BrowserProvider((window as any).ethereum);
-      const signer = await provider.getSigner();
+      if (!walletClient) {
+        setError("Wallet client not available. Please reconnect your wallet.");
+        return;
+      }
+
+      // Use walletClient's transport as the provider
+      const { account, chain, transport } = walletClient;
+      const network = {
+        chainId: chain.id,
+        name: chain.name,
+        ensAddress: chain.contracts?.ensRegistry?.address,
+      };
+      const provider = new BrowserProvider(transport, network);
+      const signer = await provider.getSigner(account.address);
 
       // Set signer and login
       const clientWithSigner = await client.withUserSigner(signer);
