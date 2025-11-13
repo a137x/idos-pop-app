@@ -15,6 +15,25 @@ import { useRadix } from "@/lib/hooks/useRadix";
 import { useRadixAccounts } from "@/lib/hooks/useRadixAccounts";
 import { getGatewayUrl, getDashboardUrl } from "@/lib/radix/network-config";
 
+// Helper function to add context to error messages
+const enhanceErrorMessage = (err: any, context: string): string => {
+  const originalMessage = err.message || err.toString();
+
+  // If it's the specific "reading '0'" error, add context about where it occurred
+  if (originalMessage.includes("reading '0'")) {
+    console.error("========================================");
+    console.error("DETECTED: 'reading 0' ERROR");
+    console.error("Context:", context);
+    console.error("Error message:", originalMessage);
+    console.error("Error object:", err);
+    console.error("Error stack:", err.stack);
+    console.error("========================================");
+    return `[${context}] ${originalMessage}`;
+  }
+
+  return originalMessage;
+};
+
 export default function Home() {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
@@ -40,6 +59,8 @@ export default function Home() {
   const [minting, setMinting] = useState(false);
   const [mintedTxId, setMintedTxId] = useState<string | null>(null);
   const [radixAccountChecked, setRadixAccountChecked] = useState(false);
+  const [rewardsButtonClicked, setRewardsButtonClicked] = useState(false);
+  const [diagnosticInfo, setDiagnosticInfo] = useState<string>("");
 
   // Track pending time and show flashing install after 15 seconds
   useEffect(() => {
@@ -143,7 +164,56 @@ export default function Home() {
       setCurrentStep(3);
 
       // Fetch credentials and filter to only PoP credentials (FaceSign)
-      const allCredentials = await loggedInClient.getAllCredentials();
+      let allCredentials;
+      try {
+        allCredentials = await loggedInClient.getAllCredentials();
+      } catch (sdkError: any) {
+        // Capture diagnostic info for idOS SDK error
+        const diagnostic = `
+idOS SDK Error Detected
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: Step 2 - Initialize idOS
+Method: loggedInClient.getAllCredentials()
+Parameters: (none)
+Client State: ${loggedInClient.state}
+User ID: ${loggedInClient.user?.id || 'N/A'}
+
+Error Message: ${sdkError.message}
+
+Stack Trace:
+${sdkError.stack || 'N/A'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This appears to be an idOS SDK internal error.
+        `.trim();
+
+        setDiagnosticInfo(diagnostic);
+        console.error("[idOS SDK Error]", diagnostic);
+        throw new Error(`idOS SDK getAllCredentials() failed: ${sdkError.message}`);
+      }
+
+      // Validate the return value
+      if (!allCredentials || !Array.isArray(allCredentials)) {
+        const diagnostic = `
+Data Validation Error
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: Step 2 - Initialize idOS
+Method: loggedInClient.getAllCredentials()
+Expected: Array of credentials
+Received: ${typeof allCredentials}
+Value: ${JSON.stringify(allCredentials, null, 2)}
+
+Client State: ${loggedInClient.state}
+User ID: ${loggedInClient.user?.id || 'N/A'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+The SDK returned successfully but with unexpected data format.
+        `.trim();
+
+        setDiagnosticInfo(diagnostic);
+        console.error("[Data Validation Error]", diagnostic);
+        setError("Failed to fetch credentials. Please try again.");
+        return;
+      }
+
       const realCredentials = allCredentials.filter(
         (cred) => !cred.original_id && !!cred.public_notes
       );
@@ -170,8 +240,9 @@ export default function Home() {
         setError("No Proof-of-Personhood credentials found. Please create a FaceSign credential at https://app.idos.network/?ref=2993D304");
       }
     } catch (err: any) {
-      setError(err.message || "Failed to initialize idOS");
-      console.error(err);
+      const errorMessage = enhanceErrorMessage(err, "Step 2: Initialize idOS");
+      setError(errorMessage || "Failed to initialize idOS");
+      console.error("[Step 2: Initialize idOS]", err);
     } finally {
       setLoading(false);
     }
@@ -227,12 +298,33 @@ export default function Home() {
         const result = await response.json();
 
         if (result.error) {
+          // Check if it's the "reading '0'" error from backend
+          if (result.error.includes("reading '0'")) {
+            const diagnostic = `
+Backend API Error Detected
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: Step 3 - Verify Credential
+API Endpoint: /api/verify-credential/${idOSClient.user.id}
+Parameters:
+  - userId: ${idOSClient.user.id}
+  - dataId: ${firstCredential.id}
+
+Error Message: ${result.error}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This appears to be an error in the backend API, likely in the idOS Consumer SDK.
+            `.trim();
+
+            setDiagnosticInfo(diagnostic);
+            console.error("[Backend API Error]", diagnostic);
+          }
           verified.set(firstCredential.id, { success: false, error: result.error });
         } else {
           verified.set(firstCredential.id, { success: true, data: result });
         }
       } catch (err: any) {
-        verified.set(firstCredential.id, { success: false, error: err.message });
+        const errorMessage = enhanceErrorMessage(err, "Step 3: Verify Credential");
+        verified.set(firstCredential.id, { success: false, error: errorMessage });
+        console.error("[Step 3: Verify Credential]", err);
       }
 
       setVerifiedCredentials(verified);
@@ -269,8 +361,9 @@ export default function Home() {
         }
       }
     } catch (err: any) {
-      setError(err.message || "Failed to verify credentials");
-      console.error(err);
+      const errorMessage = enhanceErrorMessage(err, "Step 3: Verify All Credentials");
+      setError(errorMessage || "Failed to verify credentials");
+      console.error("[Step 3: Verify All Credentials]", err);
     } finally {
       setLoading(false);
     }
@@ -299,7 +392,7 @@ export default function Home() {
       }
 
       const data = await response.json();
-      const accountData = data.items?.[0];
+      const accountData = data?.items?.[0];
 
       if (!accountData?.details?.state) {
         // If there's no state field at all, deposits are accepted by default
@@ -317,7 +410,10 @@ export default function Home() {
         setDepositRuleAccepts(false);
       }
     } catch (err: any) {
-      console.error('[Radix] Failed to check deposit rule:', err);
+      console.error('[Step 1: Check Deposit Rule]', err);
+      if (err.message?.includes("reading '0'")) {
+        console.error('[Step 1: Check Deposit Rule] Detected undefined array access error');
+      }
       // On error, assume it's okay to proceed
       setDepositRuleAccepts(true);
     } finally {
@@ -434,8 +530,9 @@ export default function Home() {
               throw new Error(result.error || 'Failed to store credentials');
             }
           } catch (err: any) {
-            console.error('[Radix] Failed to store credentials:', err);
-            throw new Error('Failed to link credentials to Radix account: ' + err.message);
+            const errorMessage = enhanceErrorMessage(err, "Step 1: Store Credentials");
+            console.error('[Step 1: Store Credentials]', err);
+            throw new Error('Failed to link credentials to Radix account: ' + errorMessage);
           }
         }
       }
@@ -450,8 +547,9 @@ export default function Home() {
       // Check account deposit rule
       await checkAccountDepositRule(account.address);
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Failed to connect Radix account");
+      const errorMessage = enhanceErrorMessage(err, "Step 1: Connect Radix Account");
+      console.error("[Step 1: Connect Radix Account]", err);
+      setError(errorMessage || "Failed to connect Radix account");
       setRadixAccount(null);
     } finally {
       setRadixWalletPending(false);
@@ -508,8 +606,9 @@ export default function Home() {
 
       setMintedTxId(result.transactionId);
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Failed to mint NFT');
+      const errorMessage = enhanceErrorMessage(err, "Step 4: Mint NFT");
+      console.error("[Step 4: Mint NFT]", err);
+      setError(errorMessage || 'Failed to mint NFT');
     } finally {
       setMinting(false);
     }
@@ -969,7 +1068,11 @@ export default function Home() {
             <CardHeader className="relative z-10">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                  mintedTxId ? "bg-[#FF43CA] shadow-[0_0_20px_rgba(255,67,202,0.4)]" : "bg-gray-700"
+                  rewardsButtonClicked
+                    ? "bg-[#FF43CA] shadow-[0_0_20px_rgba(255,67,202,0.4)]"
+                    : mintedTxId
+                    ? "bg-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)]"
+                    : "bg-gray-700"
                 }`}>
                   <Gift className={`w-5 h-5 ${mintedTxId ? "text-black" : "text-white"}`} />
                 </div>
@@ -999,6 +1102,7 @@ export default function Home() {
                     href="https://incentives.radixdlt.com/dashboard"
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => setRewardsButtonClicked(true)}
                   >
                     <Button
                       size="lg"
@@ -1011,6 +1115,37 @@ export default function Home() {
               </CardContent>
             )}
           </Card>
+
+          {/* Diagnostic Information Display */}
+          {diagnosticInfo && (
+            <Card className="bg-[#1a1a1a] border-orange-500/50">
+              <CardHeader>
+                <CardTitle className="text-orange-400 flex items-center gap-2">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Diagnostic Information
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  Please share this information with support to help diagnose the issue
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <pre className="text-xs text-gray-300 bg-black/50 p-4 rounded overflow-x-auto whitespace-pre-wrap font-mono border border-gray-700">
+                  {diagnosticInfo}
+                </pre>
+                <Button
+                  onClick={() => {
+                    navigator.clipboard.writeText(diagnosticInfo);
+                  }}
+                  className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white"
+                  size="sm"
+                >
+                  Copy Diagnostic Info to Clipboard
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Error Display - Only show here if not related to profile check */}
           {error && hasProfile !== false && (

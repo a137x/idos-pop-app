@@ -21,12 +21,28 @@ export async function GET(
     const consumer = await getIdOSConsumer();
 
     // Get access grants for this user, filtering by data_id (credential ID)
-    const { grants } = await consumer.getAccessGrants({
-      user_id: userId,
-      data_id: dataId, // Filter grants by the credential/data ID
-    });
+    let result;
+    try {
+      result = await consumer.getAccessGrants({
+        user_id: userId,
+        data_id: dataId, // Filter grants by the credential/data ID
+      });
+    } catch (sdkError: any) {
+      const errorDetails = `
+idOS Consumer SDK Error
+Method: consumer.getAccessGrants()
+Parameters: { user_id: "${userId}", data_id: "${dataId}" }
+Error: ${sdkError.message}
+Stack: ${sdkError.stack}
+      `.trim();
 
-    if (grants.length === 0) {
+      console.error("[Backend API] idOS Consumer SDK Error:", errorDetails);
+      throw new Error(`idOS Consumer SDK getAccessGrants() failed: ${sdkError.message}`);
+    }
+
+    const grants = result?.grants;
+
+    if (!grants || grants.length === 0) {
       return Response.json(
         { error: "No access grant found for this credential" },
         { status: 404 }
@@ -72,9 +88,18 @@ export async function GET(
       },
     });
   } catch (error: any) {
-    console.error("[Backend] Error verifying credential:", error);
+    const errorMessage = error.message || "Failed to verify credential";
+
+    // Add context if it's the undefined array access error
+    if (errorMessage.includes("reading '0'")) {
+      console.error("[Backend API: verify-credential] Detected undefined array access error:", error);
+      console.error("[Backend API: verify-credential] This likely means consumer.getAccessGrants returned undefined or malformed data");
+    } else {
+      console.error("[Backend API: verify-credential] Error:", error);
+    }
+
     return Response.json(
-      { error: error.message || "Failed to verify credential" },
+      { error: `[Backend: verify-credential] ${errorMessage}` },
       { status: 500 }
     );
   }
