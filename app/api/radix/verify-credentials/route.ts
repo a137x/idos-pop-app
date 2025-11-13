@@ -29,9 +29,16 @@ export async function POST(request: NextRequest) {
       message: 'Credentials verified and stored',
     });
   } catch (error: any) {
-    console.error('[VerifyCredentials] Error:', error);
+    const errorMessage = error.message || 'Failed to verify credentials';
+
+    if (errorMessage.includes("reading '0'")) {
+      console.error('[Backend API: verify-credentials] Detected undefined array access error:', error);
+    } else {
+      console.error('[Backend API: verify-credentials] Error:', error);
+    }
+
     return NextResponse.json(
-      { error: error.message || 'Failed to verify credentials' },
+      { error: `[Backend: verify-credentials] ${errorMessage}` },
       { status: 500 }
     );
   }

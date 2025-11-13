@@ -73,10 +73,17 @@ export async function POST(request: NextRequest) {
       address: proof.address,
       verified: true,
     });
-  } catch (error) {
-    console.error('[Backend] Failed to verify account:', error);
+  } catch (error: any) {
+    const errorMessage = error?.message || 'Failed to verify account';
+
+    if (errorMessage.includes("reading '0'")) {
+      console.error('[Backend API: verify-account] Detected undefined array access error:', error);
+    } else {
+      console.error('[Backend API: verify-account] Error:', error);
+    }
+
     return NextResponse.json(
-      { error: 'Failed to verify account' },
+      { error: `[Backend: verify-account] ${errorMessage}` },
       { status: 500 }
     );
   }
