@@ -19,10 +19,15 @@ import { getGatewayUrl, getDashboardUrl } from "@/lib/radix/network-config";
 const enhanceErrorMessage = (err: any, context: string): string => {
   const originalMessage = err.message || err.toString();
 
-  // If it's the specific "reading '0'" error, add context about where it occurred
-  if (originalMessage.includes("reading '0'")) {
+  // Check for array access errors (different browsers phrase it differently)
+  // Chrome/Firefox: "Cannot read properties of undefined (reading '0')"
+  // Safari/iOS: "undefined is not an object (evaluating 'e[0]')"
+  const isArrayAccessError = originalMessage.includes("reading '0'") ||
+                             (originalMessage.includes("evaluating") && originalMessage.includes("[0]"));
+
+  if (isArrayAccessError) {
     console.error("========================================");
-    console.error("DETECTED: 'reading 0' ERROR");
+    console.error("DETECTED: UNDEFINED ARRAY ACCESS ERROR");
     console.error("Context:", context);
     console.error("Error message:", originalMessage);
     console.error("Error object:", err);
@@ -298,8 +303,11 @@ The SDK returned successfully but with unexpected data format.
         const result = await response.json();
 
         if (result.error) {
-          // Check if it's the "reading '0'" error from backend
-          if (result.error.includes("reading '0'")) {
+          // Check if it's an array access error from backend (different browsers phrase it differently)
+          const isArrayAccessError = result.error.includes("reading '0'") ||
+                                     (result.error.includes("evaluating") && result.error.includes("[0]"));
+
+          if (isArrayAccessError) {
             const diagnostic = `
 Backend API Error Detected
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━

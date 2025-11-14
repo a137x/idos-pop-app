@@ -76,7 +76,11 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     const errorMessage = error?.message || 'Failed to verify account';
 
-    if (errorMessage.includes("reading '0'")) {
+    // Check for array access errors (different browsers phrase it differently)
+    const isArrayAccessError = errorMessage.includes("reading '0'") ||
+                               (errorMessage.includes("evaluating") && errorMessage.includes("[0]"));
+
+    if (isArrayAccessError) {
       console.error('[Backend API: verify-account] Detected undefined array access error:', error);
     } else {
       console.error('[Backend API: verify-account] Error:', error);

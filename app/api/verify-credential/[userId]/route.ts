@@ -90,8 +90,13 @@ Stack: ${sdkError.stack}
   } catch (error: any) {
     const errorMessage = error.message || "Failed to verify credential";
 
-    // Add context if it's the undefined array access error
-    if (errorMessage.includes("reading '0'")) {
+    // Check for array access errors (different browsers phrase it differently)
+    // Chrome/Firefox: "Cannot read properties of undefined (reading '0')"
+    // Safari/iOS: "undefined is not an object (evaluating 'e[0]')"
+    const isArrayAccessError = errorMessage.includes("reading '0'") ||
+                               (errorMessage.includes("evaluating") && errorMessage.includes("[0]"));
+
+    if (isArrayAccessError) {
       console.error("[Backend API: verify-credential] Detected undefined array access error:", error);
       console.error("[Backend API: verify-credential] This likely means consumer.getAccessGrants returned undefined or malformed data");
     } else {
