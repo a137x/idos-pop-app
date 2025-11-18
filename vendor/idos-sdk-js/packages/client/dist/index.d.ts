@@ -4,7 +4,6 @@ import { BaseProvider, EnclaveOptions, PublicEncryptionProfile } from "@idos-net
 import { JsonRpcSigner, Wallet } from "ethers";
 import * as z from "zod";
 import { Wallet as Wallet$1 } from "@near-wallet-selector/core";
-import { AddAddressMessageToSign, AddAddressSignatureMessage, RemoveAddressMessageToSign, RemoveAddressSignatureMessage } from "@idos-network/utils/mpc";
 
 //#region ../@core/src/kwil-infra/create-kwil-client.d.ts
 type KwilActions = typeof actionSchema;
@@ -20,11 +19,8 @@ type AllKwilExecuteAction = { [Name in ActionName]: AllKwilCallAction[Name] & {
 } };
 type KwilExecuteActionRequestParams = AllKwilExecuteAction[ActionName];
 /**
-
 * A client for interacting with kwil with type-safe abstractions for `call` and `execute`.
-
 * Has utility methods for creating actions and setting a signer.
-
 */
 declare class KwilActionClient {
   #private;
@@ -32,34 +28,28 @@ declare class KwilActionClient {
   readonly client: NodeKwil | WebKwil;
   constructor(client: NodeKwil | WebKwil);
   /**
-  
   * Calls an action on the kwil nodes. This similar to `GET` like request.
-  
   */
   call<T = unknown>(params: KwilCallActionRequestParams, signer?: KwilSigner | undefined): Promise<T>;
   /**
-  
   * Executes an action on the kwil nodes. This similar to `POST` like request.
-  
   */
   execute(params: KwilExecuteActionRequestParams, signer?: KwilSigner | undefined, synchronous?: boolean): Promise<string | undefined>;
   setSigner(signer: KwilSigner | undefined): void;
 }
 /**
-
 * Create a kwil client for node.js environment
-
 */
 //#endregion
 //#region ../@credentials/src/utils/types.d.ts
 type idOSCredential$1 = {
   id: string;
   user_id: string;
+  issuer_auth_public_key: string;
+  original_id?: string;
   public_notes: string;
   content: string;
   encryptor_public_key: string;
-  issuer_auth_public_key: string;
-  original_id?: string | null;
 };
 //#endregion
 //#region ../@core/src/types/index.d.ts
@@ -69,7 +59,6 @@ type Wallet$2 = Wallet | JsonRpcSigner | Wallet$1 | CustomKwilSigner;
 interface CustomKwilSigner extends KwilSigner {
   publicAddress: string;
   signatureType: string;
-  publicKey: string;
 }
 //#endregion
 //#region ../@core/src/kwil-infra/near/create-near-wallet-kwil-signer.d.ts
@@ -83,15 +72,15 @@ type ActionSchemaElement = {
   type: typeof DataType.Uuid | typeof DataType.Text | typeof DataType.Int;
 };
 declare const actionSchema: Record<string, ActionSchemaElement[]>;
-declare const AddUserAsInserterInputSchema: z.ZodObject<{
+declare const idOSUserSchema: z.ZodObject<{
   id: z.ZodUUID;
   recipient_encryption_public_key: z.ZodString;
   encryption_password_store: z.ZodString;
 }>;
-type AddUserAsInserterInput = z.infer<typeof AddUserAsInserterInputSchema>;
+type idOSUser = z.infer<typeof idOSUserSchema>;
 /**  USER ACTIONS */
 
-declare const UpsertWalletAsInserterInputSchema: z.ZodObject<{
+declare const idOSWalletSchema: z.ZodObject<{
   id: z.ZodUUID;
   user_id: z.ZodUUID;
   address: z.ZodString;
@@ -100,7 +89,7 @@ declare const UpsertWalletAsInserterInputSchema: z.ZodObject<{
   message: z.ZodString;
   signature: z.ZodString;
 }>;
-type UpsertWalletAsInserterInput = z.infer<typeof UpsertWalletAsInserterInputSchema>;
+type idOSWallet = z.infer<typeof idOSWalletSchema>;
 /**  WALLET ACTIONS */
 
 declare const AddWalletInputSchema: z.ZodObject<{
@@ -122,15 +111,15 @@ declare const GetWalletsOutputSchema: z.ZodObject<{
   inserter: z.ZodString;
 }>;
 type GetWalletsOutput = z.infer<typeof GetWalletsOutputSchema>;
-declare const GetCredentialsOutputSchema: z.ZodObject<{
+declare const idOSCredentialListItemSchema: z.ZodObject<{
   id: z.ZodUUID;
   user_id: z.ZodUUID;
   public_notes: z.ZodString;
   issuer_auth_public_key: z.ZodString;
-  inserter: z.ZodNullable<z.ZodString>;
-  original_id: z.ZodNullable<z.ZodUUID>;
+  inserter: z.ZodString;
+  original_id: z.ZodUUID;
 }>;
-type GetCredentialsOutput = z.infer<typeof GetCredentialsOutputSchema>;
+type idOSCredentialListItem = z.infer<typeof idOSCredentialListItemSchema>;
 declare const ShareCredentialInputSchema: z.ZodObject<{
   id: z.ZodUUID;
   original_credential_id: z.ZodUUID;
@@ -145,33 +134,31 @@ declare const ShareCredentialInputSchema: z.ZodObject<{
   locked_until: z.ZodNumber;
 }>;
 type ShareCredentialInput = z.infer<typeof ShareCredentialInputSchema>;
-declare const GetCredentialSharedOutputSchema: z.ZodObject<{
+declare const idOSCredentialSchema: z.ZodObject<{
   id: z.ZodUUID;
   user_id: z.ZodUUID;
   public_notes: z.ZodString;
   content: z.ZodString;
   encryptor_public_key: z.ZodString;
   issuer_auth_public_key: z.ZodString;
-  inserter: z.ZodNullable<z.ZodString>;
+  inserter: z.ZodString;
 }>;
-type GetCredentialSharedOutput = z.infer<typeof GetCredentialSharedOutputSchema>;
-/**  As a credential copy doesn't contain PUBLIC notes, we return respective original credential PUBLIC notes */
-
+type idOSCredential = z.infer<typeof idOSCredentialSchema>;
 declare const AddAttributeInputSchema: z.ZodObject<{
   id: z.ZodUUID;
   attribute_key: z.ZodString;
   value: z.ZodString;
 }>;
 type AddAttributeInput = z.infer<typeof AddAttributeInputSchema>;
-declare const GetAttributesOutputSchema: z.ZodObject<{
+declare const idOSUserAttributeSchema: z.ZodObject<{
   id: z.ZodUUID;
   user_id: z.ZodUUID;
   attribute_key: z.ZodString;
   value: z.ZodString;
   original_id: z.ZodUUID;
 }>;
-type GetAttributesOutput = z.infer<typeof GetAttributesOutputSchema>;
-declare const DwgMessageInputSchema: z.ZodObject<{
+type idOSUserAttribute = z.infer<typeof idOSUserAttributeSchema>;
+declare const idOSDelegatedWriteGrantSchema: z.ZodObject<{
   owner_wallet_identifier: z.ZodString;
   grantee_wallet_identifier: z.ZodString;
   issuer_public_key: z.ZodString;
@@ -180,32 +167,28 @@ declare const DwgMessageInputSchema: z.ZodObject<{
   not_usable_before: z.ZodString;
   not_usable_after: z.ZodString;
 }>;
-type DwgMessageInput = z.infer<typeof DwgMessageInputSchema>;
-declare const GetAccessGrantsGrantedInputSchema: z.ZodObject<{
-  user_id: z.ZodNullable<z.ZodUUID>;
-  page: z.ZodNumber;
-  size: z.ZodNumber;
-}>;
-type GetAccessGrantsGrantedInput = z.infer<typeof GetAccessGrantsGrantedInputSchema>;
-declare const GetAccessGrantsGrantedOutputSchema: z.ZodObject<{
+type idOSDelegatedWriteGrant = z.infer<typeof idOSDelegatedWriteGrantSchema>;
+declare const idOSGrantSchema: z.ZodObject<{
   id: z.ZodUUID;
   ag_owner_user_id: z.ZodUUID;
   ag_grantee_wallet_identifier: z.ZodString;
   data_id: z.ZodUUID;
   locked_until: z.ZodNumber;
-  content_hash: z.ZodNullable<z.ZodString>;
+  content_hash: z.ZodString;
   inserter_type: z.ZodString;
   inserter_id: z.ZodString;
 }>;
-type GetAccessGrantsGrantedOutput = z.infer<typeof GetAccessGrantsGrantedOutputSchema>;
+type idOSGrant = z.infer<typeof idOSGrantSchema>;
+declare const GetGrantsPaginatedInputSchema: z.ZodObject<{
+  user_id: z.ZodNullable<z.ZodUUID>;
+  page: z.ZodNumber;
+  size: z.ZodNumber;
+}>;
+type GetGrantsPaginatedInput = z.infer<typeof GetGrantsPaginatedInputSchema>;
 /**
-
 *  As arguments can be undefined (user can not send them at all), we have to have default values: page=1, size=20
-
 *  Page number starts from 1, as UI usually shows to user in pagination element
-
 *  Ordering is consistent because we use height as first ordering parameter
-
 */
 
 declare const DagMessageInputSchema: z.ZodObject<{
@@ -217,16 +200,6 @@ declare const DagMessageInputSchema: z.ZodObject<{
 }>;
 type DagMessageInput = z.infer<typeof DagMessageInputSchema>;
 //#endregion
-//#region ../@core/src/kwil-actions/index.d.ts
-// Name aliases for a better developer experience
-type idOSUser = AddUserAsInserterInput;
-type idOSGrant = GetAccessGrantsGrantedOutput;
-type idOSCredential = GetCredentialSharedOutput;
-type idOSCredentialListItem = GetCredentialsOutput;
-type idOSUserAttribute = GetAttributesOutput;
-type idOSWallet = UpsertWalletAsInserterInput;
-type idOSDelegatedWriteGrant = DwgMessageInput;
-//#endregion
 //#region src/enclave/iframe-enclave.d.ts
 interface IframeEnclaveOptions extends EnclaveOptions {
   container: string;
@@ -237,7 +210,6 @@ declare class IframeEnclave extends BaseProvider<IframeEnclaveOptions> {
   private container;
   private iframe;
   private hostUrl;
-  private bound;
   constructor(options: IframeEnclaveOptions);
   /** @see parent method */
   load(): Promise<void>;
@@ -263,10 +235,6 @@ declare class IframeEnclave extends BaseProvider<IframeEnclaveOptions> {
   backupUserEncryptionProfile(): Promise<void>;
   /** @override parent method to call iframe */
   ensureUserEncryptionProfile(): Promise<PublicEncryptionProfile>;
-  addAddressMessageToSign(address: string, publicKey: string | undefined, addressToAddType: string): Promise<AddAddressMessageToSign>;
-  removeAddressMessageToSign(address: string, publicKey: string | undefined, addressToRemoveType: string): Promise<RemoveAddressMessageToSign>;
-  addAddressToMpcSecret(userId: string, message: AddAddressSignatureMessage, signature: string): Promise<string>;
-  removeAddressFromMpcSecret(userId: string, message: RemoveAddressSignatureMessage, signature: string): Promise<string>;
   private createAndLoadIframe;
   private showEnclave;
   private hideEnclave;
@@ -302,7 +270,7 @@ declare class idOSClientIdle {
   constructor(store: Store, kwilClient: KwilActionClient, enclaveProvider: BaseProvider);
   static fromConfig(params: idOSClientConfiguration<BaseProvider>): Promise<idOSClientIdle>;
   addressHasProfile(address: string): Promise<boolean>;
-  withUserSigner(_signer: Wallet$2): Promise<idOSClientWithUserSigner>;
+  withUserSigner(signer: Wallet$2): Promise<idOSClientWithUserSigner>;
   logOut(): Promise<idOSClientIdle>;
 }
 declare class idOSClientWithUserSigner implements Omit<Properties<idOSClientIdle>, "state"> {
@@ -313,9 +281,7 @@ declare class idOSClientWithUserSigner implements Omit<Properties<idOSClientIdle
   readonly signer: Wallet$2;
   readonly kwilSigner: KwilSigner;
   readonly walletIdentifier: string;
-  readonly walletPublicKey: string | undefined;
-  readonly walletType: string;
-  constructor(idOSClientIdle: idOSClientIdle, signer: Wallet$2, kwilSigner: KwilSigner, walletIdentifier: string, walletPublicKey: string | undefined, walletType: string);
+  constructor(idOSClientIdle: idOSClientIdle, signer: Wallet$2, kwilSigner: KwilSigner, walletIdentifier: string);
   logOut(): Promise<idOSClientIdle>;
   hasProfile(): Promise<boolean>;
   createUserEncryptionProfile(userId: string): Promise<PublicEncryptionProfile>;
@@ -329,8 +295,6 @@ declare class idOSClientLoggedIn implements Omit<Properties<idOSClientWithUserSi
   readonly signer: Wallet$2;
   readonly kwilSigner: KwilSigner;
   readonly walletIdentifier: string;
-  readonly walletPublicKey: string | undefined;
-  readonly walletType: string;
   readonly user: idOSUser;
   constructor(idOSClientWithUserSigner: idOSClientWithUserSigner, user: idOSUser);
   logOut(): Promise<idOSClientIdle>;
@@ -350,19 +314,17 @@ declare class idOSClientLoggedIn implements Omit<Properties<idOSClientWithUserSi
     id: string;
   }>;
   requestDAGMessage(params: DagMessageInput): Promise<string>;
-  getGrants(params: GetAccessGrantsGrantedInput): Promise<{
+  getGrants(params: GetGrantsPaginatedInput): Promise<{
     grants: idOSGrant[];
     totalCount: number;
   }>;
   addWallets(params: AddWalletInput[]): Promise<AddWalletInput[]>;
   getGrantsCount(): Promise<number>;
-  getCredentialShared(id: string): Promise<idOSCredential | undefined>;
+  getSharedCredential(id: string): Promise<idOSCredential | undefined>;
   revokeAccessGrant(id: string): Promise<{
     id: string;
   }>;
-  addWallet(params: AddWalletInput & {
-    wallet_type: string;
-  }): Promise<AddWalletInput>;
+  addWallet(params: AddWalletInput): Promise<AddWalletInput>;
   getWallets(): Promise<GetWalletsOutput[]>;
   removeWallet(id: string): Promise<{
     id: string;
@@ -376,7 +338,11 @@ declare class idOSClientLoggedIn implements Omit<Properties<idOSClientWithUserSi
       pick: Record<string, unknown[]>;
       omit: Record<string, unknown[]>;
     };
-  }): Promise<idOSCredentialListItem[]>;
+    privateFieldFilters?: {
+      pick: Record<string, unknown[]>;
+      omit: Record<string, unknown[]>;
+    };
+  }): Promise<idOSCredential[]>;
   requestAccessGrant(credentialId: string, {
     consumerEncryptionPublicKey,
     consumerAuthPublicKey

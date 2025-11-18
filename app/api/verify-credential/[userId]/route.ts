@@ -63,7 +63,7 @@ Stack: ${sdkError.stack}
     }
 
     // Retrieve and decrypt the credential content
-    const credentialContent = await consumer.getCredentialSharedContentDecrypted(grant.data_id);
+    const credentialContent = await consumer.getSharedCredentialContentDecrypted(grant.data_id);
 
     if (!credentialContent) {
       return Response.json(

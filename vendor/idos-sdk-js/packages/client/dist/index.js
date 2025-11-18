@@ -155,8 +155,8 @@ function assignProp(target, prop, value) {
 function mergeDefs(...defs) {
 	const mergedDescriptors = {};
 	for (const def of defs) {
-		const descriptors = Object.getOwnPropertyDescriptors(def);
-		Object.assign(mergedDescriptors, descriptors);
+		const descriptors$1 = Object.getOwnPropertyDescriptors(def);
+		Object.assign(mergedDescriptors, descriptors$1);
 	}
 	return Object.defineProperties({}, mergedDescriptors);
 }
@@ -164,7 +164,7 @@ function esc(str) {
 	return JSON.stringify(str);
 }
 const captureStackTrace = "captureStackTrace" in Error ? Error.captureStackTrace : (..._args) => {};
-function isObject(data) {
+function isObject$1(data) {
 	return typeof data === "object" && data !== null && !Array.isArray(data);
 }
 const allowsEval = cached(() => {
@@ -177,12 +177,12 @@ const allowsEval = cached(() => {
 		return false;
 	}
 });
-function isPlainObject(o) {
-	if (isObject(o) === false) return false;
+function isPlainObject$1(o) {
+	if (isObject$1(o) === false) return false;
 	const ctor = o.constructor;
 	if (ctor === void 0) return true;
 	const prot = ctor.prototype;
-	if (isObject(prot) === false) return false;
+	if (isObject$1(prot) === false) return false;
 	if (Object.prototype.hasOwnProperty.call(prot, "isPrototypeOf") === false) return false;
 	return true;
 }
@@ -260,8 +260,8 @@ function omit(schema, mask$2) {
 	});
 	return clone(schema, def);
 }
-function extend(schema, shape) {
-	if (!isPlainObject(shape)) throw new Error("Invalid input to extend: expected a plain object");
+function extend$1(schema, shape) {
+	if (!isPlainObject$1(shape)) throw new Error("Invalid input to extend: expected a plain object");
 	const def = mergeDefs(schema._zod.def, {
 		get shape() {
 			const _shape = {
@@ -275,7 +275,7 @@ function extend(schema, shape) {
 	});
 	return clone(schema, def);
 }
-function merge(a, b) {
+function merge$1(a, b) {
 	const def = mergeDefs(a._zod.def, {
 		get shape() {
 			const _shape = {
@@ -1480,7 +1480,7 @@ const $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
 		return (payload, ctx) => fn(shape, payload, ctx);
 	};
 	let fastpass;
-	const isObject$1 = isObject;
+	const isObject$2 = isObject$1;
 	const jit = !globalConfig.jitless;
 	const allowsEval$1 = allowsEval;
 	const fastEnabled = jit && allowsEval$1.value;
@@ -1489,7 +1489,7 @@ const $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
 	inst._zod.parse = (payload, ctx) => {
 		value ?? (value = _normalized.value);
 		const input = payload.value;
-		if (!isObject$1(input)) {
+		if (!isObject$2(input)) {
 			payload.issues.push({
 				expected: "object",
 				code: "invalid_type",
@@ -1631,7 +1631,7 @@ function mergeValues(a, b) {
 		valid: true,
 		data: a
 	};
-	if (isPlainObject(a) && isPlainObject(b)) {
+	if (isPlainObject$1(a) && isPlainObject$1(b)) {
 		const bKeys = Object.keys(b);
 		const sharedKeys = Object.keys(a).filter((key) => bKeys.indexOf(key) !== -1);
 		const newObj = {
@@ -2765,9 +2765,9 @@ const ZodObject = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
 		catchall: void 0
 	});
 	inst.extend = (incoming) => {
-		return extend(inst, incoming);
+		return extend$1(inst, incoming);
 	};
-	inst.merge = (other) => merge(inst, other);
+	inst.merge = (other) => merge$1(inst, other);
 	inst.pick = (mask$2) => pick(inst, mask$2);
 	inst.omit = (mask$2) => omit(inst, mask$2);
 	inst.partial = (...args) => partial(ZodOptional, inst, args[0]);
@@ -2989,30 +2989,6 @@ function superRefine(fn) {
 //#region ../@core/src/kwil-actions/actions.ts
 const DataType = Utils.DataType;
 const actionSchema = {
-	add_inserter_as_owner: [{
-		name: "id",
-		type: DataType.Uuid
-	}, {
-		name: "name",
-		type: DataType.Text
-	}],
-	delete_inserter_as_owner: [{
-		name: "id",
-		type: DataType.Uuid
-	}],
-	add_delegate_as_owner: [{
-		name: "address",
-		type: DataType.Text
-	}, {
-		name: "inserter_id",
-		type: DataType.Uuid
-	}],
-	delete_delegate_as_owner: [{
-		name: "address",
-		type: DataType.Text
-	}],
-	get_inserter: [],
-	get_inserter_or_null: [],
 	add_user_as_inserter: [
 		{
 			name: "id",
@@ -3027,25 +3003,7 @@ const actionSchema = {
 			type: DataType.Text
 		}
 	],
-	update_user_pub_key_as_inserter: [
-		{
-			name: "id",
-			type: DataType.Uuid
-		},
-		{
-			name: "recipient_encryption_public_key",
-			type: DataType.Text
-		},
-		{
-			name: "encryption_password_store",
-			type: DataType.Text
-		}
-	],
 	get_user: [],
-	get_user_as_inserter: [{
-		name: "id",
-		type: DataType.Uuid
-	}],
 	upsert_wallet_as_inserter: [
 		{
 			name: "id",
@@ -3103,70 +3061,6 @@ const actionSchema = {
 		name: "id",
 		type: DataType.Uuid
 	}],
-	upsert_credential_as_inserter: [
-		{
-			name: "id",
-			type: DataType.Uuid
-		},
-		{
-			name: "user_id",
-			type: DataType.Uuid
-		},
-		{
-			name: "issuer_auth_public_key",
-			type: DataType.Text
-		},
-		{
-			name: "encryptor_public_key",
-			type: DataType.Text
-		},
-		{
-			name: "content",
-			type: DataType.Text
-		},
-		{
-			name: "public_notes",
-			type: DataType.Text
-		},
-		{
-			name: "public_notes_signature",
-			type: DataType.Text
-		},
-		{
-			name: "broader_signature",
-			type: DataType.Text
-		}
-	],
-	add_credential: [
-		{
-			name: "id",
-			type: DataType.Uuid
-		},
-		{
-			name: "issuer_auth_public_key",
-			type: DataType.Text
-		},
-		{
-			name: "encryptor_public_key",
-			type: DataType.Text
-		},
-		{
-			name: "content",
-			type: DataType.Text
-		},
-		{
-			name: "public_notes",
-			type: DataType.Text
-		},
-		{
-			name: "public_notes_signature",
-			type: DataType.Text
-		},
-		{
-			name: "broader_signature",
-			type: DataType.Text
-		}
-	],
 	get_credentials: [],
 	get_credentials_shared_by_user: [{
 		name: "user_id",
@@ -3175,36 +3069,6 @@ const actionSchema = {
 		name: "issuer_auth_public_key",
 		type: DataType.Text
 	}],
-	edit_credential: [
-		{
-			name: "id",
-			type: DataType.Uuid
-		},
-		{
-			name: "public_notes",
-			type: DataType.Text
-		},
-		{
-			name: "public_notes_signature",
-			type: DataType.Text
-		},
-		{
-			name: "broader_signature",
-			type: DataType.Text
-		},
-		{
-			name: "content",
-			type: DataType.Text
-		},
-		{
-			name: "encryptor_public_key",
-			type: DataType.Text
-		},
-		{
-			name: "issuer_auth_public_key",
-			type: DataType.Text
-		}
-	],
 	edit_public_notes_as_issuer: [{
 		name: "public_notes_id",
 		type: DataType.Text
@@ -3214,10 +3078,6 @@ const actionSchema = {
 	}],
 	remove_credential: [{
 		name: "id",
-		type: DataType.Uuid
-	}],
-	rescind_shared_credential: [{
-		name: "credential_id",
 		type: DataType.Uuid
 	}],
 	share_credential: [
@@ -3297,64 +3157,6 @@ const actionSchema = {
 		},
 		{
 			name: "issuer_auth_public_key",
-			type: DataType.Text
-		}
-	],
-	share_credential_through_dag: [
-		{
-			name: "id",
-			type: DataType.Uuid
-		},
-		{
-			name: "user_id",
-			type: DataType.Uuid
-		},
-		{
-			name: "issuer_auth_public_key",
-			type: DataType.Text
-		},
-		{
-			name: "encryptor_public_key",
-			type: DataType.Text
-		},
-		{
-			name: "content",
-			type: DataType.Text
-		},
-		{
-			name: "content_hash",
-			type: DataType.Text
-		},
-		{
-			name: "public_notes",
-			type: DataType.Text
-		},
-		{
-			name: "public_notes_signature",
-			type: DataType.Text
-		},
-		{
-			name: "broader_signature",
-			type: DataType.Text
-		},
-		{
-			name: "original_credential_id",
-			type: DataType.Uuid
-		},
-		{
-			name: "dag_owner_wallet_identifier",
-			type: DataType.Text
-		},
-		{
-			name: "dag_grantee_wallet_identifier",
-			type: DataType.Text
-		},
-		{
-			name: "dag_locked_until",
-			type: DataType.Int
-		},
-		{
-			name: "dag_signature",
 			type: DataType.Text
 		}
 	],
@@ -3444,10 +3246,6 @@ const actionSchema = {
 			type: DataType.Text
 		}
 	],
-	credential_exist_as_inserter: [{
-		name: "id",
-		type: DataType.Uuid
-	}],
 	get_credential_owned: [{
 		name: "id",
 		type: DataType.Uuid
@@ -3460,32 +3258,6 @@ const actionSchema = {
 		name: "content_hash",
 		type: DataType.Text
 	}],
-	credential_belongs_to_caller: [{
-		name: "id",
-		type: DataType.Uuid
-	}],
-	credential_exist: [{
-		name: "id",
-		type: DataType.Uuid
-	}],
-	add_attribute_as_inserter: [
-		{
-			name: "id",
-			type: DataType.Uuid
-		},
-		{
-			name: "user_id",
-			type: DataType.Uuid
-		},
-		{
-			name: "attribute_key",
-			type: DataType.Text
-		},
-		{
-			name: "value",
-			type: DataType.Text
-		}
-	],
 	add_attribute: [
 		{
 			name: "id",
@@ -3501,42 +3273,6 @@ const actionSchema = {
 		}
 	],
 	get_attributes: [],
-	edit_attribute: [
-		{
-			name: "id",
-			type: DataType.Uuid
-		},
-		{
-			name: "attribute_key",
-			type: DataType.Text
-		},
-		{
-			name: "value",
-			type: DataType.Text
-		}
-	],
-	remove_attribute: [{
-		name: "id",
-		type: DataType.Uuid
-	}],
-	share_attribute: [
-		{
-			name: "id",
-			type: DataType.Uuid
-		},
-		{
-			name: "original_attribute_id",
-			type: DataType.Uuid
-		},
-		{
-			name: "attribute_key",
-			type: DataType.Text
-		},
-		{
-			name: "value",
-			type: DataType.Text
-		}
-	],
 	dwg_message: [
 		{
 			name: "owner_wallet_identifier",
@@ -3590,10 +3326,6 @@ const actionSchema = {
 		name: "user_id",
 		type: DataType.Uuid
 	}],
-	has_locked_access_grants: [{
-		name: "id",
-		type: DataType.Uuid
-	}],
 	dag_message: [
 		{
 			name: "dag_owner_wallet_identifier",
@@ -3642,32 +3374,6 @@ const actionSchema = {
 			type: DataType.Text
 		}
 	],
-	create_access_grant: [
-		{
-			name: "grantee_wallet_identifier",
-			type: DataType.Text
-		},
-		{
-			name: "data_id",
-			type: DataType.Uuid
-		},
-		{
-			name: "locked_until",
-			type: DataType.Int
-		},
-		{
-			name: "content_hash",
-			type: DataType.Text
-		},
-		{
-			name: "inserter_type",
-			type: DataType.Text
-		},
-		{
-			name: "inserter_id",
-			type: DataType.Text
-		}
-	],
 	get_access_grants_for_credential: [{
 		name: "credential_id",
 		type: DataType.Uuid
@@ -3676,91 +3382,9 @@ const actionSchema = {
 		name: "address",
 		type: DataType.Text
 	}],
-	add_passporting_club_as_owner: [{
-		name: "id",
-		type: DataType.Uuid
-	}, {
-		name: "name",
-		type: DataType.Text
-	}],
-	delete_passporting_club_as_owner: [{
-		name: "id",
-		type: DataType.Uuid
-	}],
-	add_passporting_peer_as_owner: [
-		{
-			name: "id",
-			type: DataType.Uuid
-		},
-		{
-			name: "name",
-			type: DataType.Text
-		},
-		{
-			name: "issuer_public_key",
-			type: DataType.Text
-		},
-		{
-			name: "passporting_server_url_base",
-			type: DataType.Text
-		}
-	],
-	delete_passporting_peer_as_owner: [{
-		name: "id",
-		type: DataType.Uuid
-	}],
-	update_passporting_peer_as_owner: [
-		{
-			name: "id",
-			type: DataType.Uuid
-		},
-		{
-			name: "name",
-			type: DataType.Text
-		},
-		{
-			name: "issuer_public_key",
-			type: DataType.Text
-		},
-		{
-			name: "passporting_server_url_base",
-			type: DataType.Text
-		}
-	],
-	add_peer_to_club_as_owner: [{
-		name: "passporting_club_id",
-		type: DataType.Uuid
-	}, {
-		name: "passporting_peer_id",
-		type: DataType.Uuid
-	}],
-	delete_peer_from_club_as_owner: [{
-		name: "passporting_club_id",
-		type: DataType.Uuid
-	}, {
-		name: "passporting_peer_id",
-		type: DataType.Uuid
-	}],
 	get_passporting_peers: []
 };
-const AddInserterAsOwnerInputSchema = object({
-	id: uuid(),
-	name: string()
-});
-const DeleteInserterAsOwnerInputSchema = object({ id: uuid() });
-const AddDelegateAsOwnerInputSchema = object({
-	address: string(),
-	inserter_id: uuid()
-});
-const DeleteDelegateAsOwnerInputSchema = object({ address: string() });
-const GetInserterOutputSchema = object({ name: string() });
-const GetInserterOrNullOutputSchema = object({ name: string() });
-const AddUserAsInserterInputSchema = object({
-	id: uuid(),
-	recipient_encryption_public_key: string(),
-	encryption_password_store: string()
-});
-const UpdateUserPubKeyAsInserterInputSchema = object({
+const idOSUserSchema = object({
 	id: uuid(),
 	recipient_encryption_public_key: string(),
 	encryption_password_store: string()
@@ -3776,14 +3400,7 @@ async function getUser(kwilClient) {
 		inputs: {}
 	}).then((result) => result[0]);
 }
-const GetUserAsInserterInputSchema = object({ id: uuid() });
-const GetUserAsInserterOutputSchema = object({
-	id: uuid(),
-	recipient_encryption_public_key: string(),
-	encryption_password_store: string(),
-	inserter: string()
-});
-const UpsertWalletAsInserterInputSchema = object({
+const idOSWalletSchema = object({
 	id: uuid(),
 	user_id: uuid(),
 	address: string(),
@@ -3832,32 +3449,13 @@ async function removeWallet(kwilClient, params) {
 		description: "Remove a wallet from idOS"
 	});
 }
-const UpsertCredentialAsInserterInputSchema = object({
-	id: uuid(),
-	user_id: uuid(),
-	issuer_auth_public_key: string(),
-	encryptor_public_key: string(),
-	content: string(),
-	public_notes: string(),
-	public_notes_signature: string(),
-	broader_signature: string()
-});
-const AddCredentialInputSchema = object({
-	id: uuid(),
-	issuer_auth_public_key: string(),
-	encryptor_public_key: string(),
-	content: string(),
-	public_notes: string(),
-	public_notes_signature: string(),
-	broader_signature: string()
-});
-const GetCredentialsOutputSchema = object({
+const idOSCredentialListItemSchema = object({
 	id: uuid(),
 	user_id: uuid(),
 	public_notes: string(),
 	issuer_auth_public_key: string(),
-	inserter: string().nullable(),
-	original_id: uuid().nullable()
+	inserter: string(),
+	original_id: uuid()
 });
 async function getCredentials(kwilClient) {
 	return await kwilClient.call({
@@ -3875,19 +3473,10 @@ const GetCredentialsSharedByUserOutputSchema = object({
 	public_notes: string(),
 	encryptor_public_key: string(),
 	issuer_auth_public_key: string(),
-	inserter: string().nullable(),
-	original_id: uuid().nullable()
+	inserter: string(),
+	original_id: uuid()
 });
-const EditCredentialInputSchema = object({
-	id: uuid(),
-	public_notes: string(),
-	public_notes_signature: string(),
-	broader_signature: string(),
-	content: string(),
-	encryptor_public_key: string(),
-	issuer_auth_public_key: string()
-});
-const EditPublicNotesAsIssuerInputSchema = object({
+const EditCredentialAsIssuerParamsSchema = object({
 	public_notes_id: string(),
 	public_notes: string()
 });
@@ -3900,7 +3489,6 @@ async function removeCredential(kwilClient, params) {
 		description: "Remove a credential from your idOS profile"
 	});
 }
-const RescindSharedCredentialInputSchema = object({ credential_id: uuid() });
 const ShareCredentialInputSchema = object({
 	id: uuid(),
 	original_credential_id: uuid(),
@@ -3919,7 +3507,7 @@ async function shareCredential(kwilClient, params) {
 	await kwilClient.execute({
 		name: "share_credential",
 		inputs,
-		description: "Share a credential with creating AG"
+		description: "Share a credential with another idOS user"
 	});
 }
 const CreateCredentialCopyInputSchema = object({
@@ -3938,26 +3526,10 @@ async function createCredentialCopy(kwilClient, params) {
 	await kwilClient.execute({
 		name: "create_credential_copy",
 		inputs,
-		description: "Share a credential without AG (access grant)"
+		description: "Share a credential with another user on idOS"
 	});
 }
-const ShareCredentialThroughDagInputSchema = object({
-	id: uuid(),
-	user_id: uuid(),
-	issuer_auth_public_key: string(),
-	encryptor_public_key: string(),
-	content: string(),
-	content_hash: string(),
-	public_notes: string(),
-	public_notes_signature: string(),
-	broader_signature: string(),
-	original_credential_id: uuid(),
-	dag_owner_wallet_identifier: string(),
-	dag_grantee_wallet_identifier: string(),
-	dag_locked_until: number(),
-	dag_signature: string()
-});
-const CreateCredentialsByDwgInputSchema = object({
+const CreateCredentialByDelegatedWriteGrantInputSchema = object({
 	issuer_auth_public_key: string(),
 	original_encryptor_public_key: string(),
 	original_credential_id: uuid(),
@@ -3980,17 +3552,15 @@ const CreateCredentialsByDwgInputSchema = object({
 	dwg_not_after: string(),
 	dwg_signature: string()
 });
-const CredentialExistAsInserterInputSchema = object({ id: uuid() });
-const CredentialExistAsInserterOutputSchema = object({ credential_exist: boolean() });
 const GetCredentialOwnedInputSchema = object({ id: uuid() });
-const GetCredentialOwnedOutputSchema = object({
+const idOSCredentialSchema = object({
 	id: uuid(),
 	user_id: uuid(),
 	public_notes: string(),
 	content: string(),
 	encryptor_public_key: string(),
 	issuer_auth_public_key: string(),
-	inserter: string().nullable()
+	inserter: string()
 });
 async function getCredentialOwned(kwilClient, params) {
 	const inputs = GetCredentialOwnedInputSchema.parse(params);
@@ -3999,36 +3569,17 @@ async function getCredentialOwned(kwilClient, params) {
 		inputs
 	});
 }
-const GetCredentialSharedInputSchema = object({ id: uuid() });
-const GetCredentialSharedOutputSchema = object({
-	id: uuid(),
-	user_id: uuid(),
-	public_notes: string(),
-	content: string(),
-	encryptor_public_key: string(),
-	issuer_auth_public_key: string(),
-	inserter: string().nullable()
-});
+const GetSharedCredentialInputSchema = object({ id: uuid() });
 /**  As a credential copy doesn't contain PUBLIC notes, we return respective original credential PUBLIC notes */
-async function getCredentialShared(kwilClient, params) {
-	const inputs = GetCredentialSharedInputSchema.parse(params);
+async function getSharedCredential(kwilClient, params) {
+	const inputs = GetSharedCredentialInputSchema.parse(params);
 	return await kwilClient.call({
 		name: "get_credential_shared",
 		inputs
 	});
 }
-const GetSiblingCredentialIdInputSchema = object({ content_hash: string() });
-const GetSiblingCredentialIdOutputSchema = object({ id: uuid() });
-const CredentialBelongsToCallerInputSchema = object({ id: uuid() });
-const CredentialBelongsToCallerOutputSchema = object({ belongs: boolean() });
-const CredentialExistInputSchema = object({ id: uuid() });
-const CredentialExistOutputSchema = object({ credential_exist: boolean() });
-const AddAttributeAsInserterInputSchema = object({
-	id: uuid(),
-	user_id: uuid(),
-	attribute_key: string(),
-	value: string()
-});
+const GetCredentialIdByContentHashInputSchema = object({ content_hash: string() });
+const GetCredentialIdByContentHashOutputSchema = object({ id: uuid() });
 const AddAttributeInputSchema = object({
 	id: uuid(),
 	attribute_key: string(),
@@ -4042,7 +3593,7 @@ async function addAttribute(kwilClient, params) {
 		description: "Create a new attribute in your idOS profile"
 	});
 }
-const GetAttributesOutputSchema = object({
+const idOSUserAttributeSchema = object({
 	id: uuid(),
 	user_id: uuid(),
 	attribute_key: string(),
@@ -4055,19 +3606,7 @@ async function getAttributes(kwilClient) {
 		inputs: {}
 	});
 }
-const EditAttributeInputSchema = object({
-	id: uuid(),
-	attribute_key: string(),
-	value: string()
-});
-const RemoveAttributeInputSchema = object({ id: uuid() });
-const ShareAttributeInputSchema = object({
-	id: uuid(),
-	original_attribute_id: uuid(),
-	attribute_key: string(),
-	value: string()
-});
-const DwgMessageInputSchema = object({
+const idOSDelegatedWriteGrantSchema = object({
 	owner_wallet_identifier: string(),
 	grantee_wallet_identifier: string(),
 	issuer_public_key: string(),
@@ -4078,22 +3617,15 @@ const DwgMessageInputSchema = object({
 });
 const DwgMessageOutputSchema = object({ message: string() });
 /**
-
 *  WRITE GRANTS ACTIONS
-
 *  Must be in yyyy-mm-ddThh:mm:ssZ format
-
 *  Must be in yyyy-mm-ddThh:mm:ssZ format
-
 *  Must be in yyyy-mm-ddThh:mm:ssZ format
-
 *  Will fail if not in the yyyy-mm-ddThh:mm:ssZ format, and not comply to RFC3339
-
 *  Check the format and precedence
-
 */
 async function dwgMessage(kwilClient, params) {
-	const inputs = DwgMessageInputSchema.parse(params);
+	const inputs = idOSDelegatedWriteGrantSchema.parse(params);
 	return await kwilClient.call({
 		name: "dwg_message",
 		inputs
@@ -4109,13 +3641,13 @@ async function revokeAccessGrant(kwilClient, params) {
 		description: "Revoke an Access Grant from idOS"
 	});
 }
-const GetAccessGrantsOwnedOutputSchema = object({
+const idOSGrantSchema = object({
 	id: uuid(),
 	ag_owner_user_id: uuid(),
 	ag_grantee_wallet_identifier: string(),
 	data_id: uuid(),
 	locked_until: number(),
-	content_hash: string().nullable(),
+	content_hash: string(),
 	inserter_type: string(),
 	inserter_id: string()
 });
@@ -4125,48 +3657,32 @@ async function getAccessGrantsOwned(kwilClient) {
 		inputs: {}
 	});
 }
-const GetAccessGrantsGrantedInputSchema = object({
+const GetGrantsPaginatedInputSchema = object({
 	user_id: uuid().nullable(),
 	page: number(),
 	size: number()
 });
-const GetAccessGrantsGrantedOutputSchema = object({
-	id: uuid(),
-	ag_owner_user_id: uuid(),
-	ag_grantee_wallet_identifier: string(),
-	data_id: uuid(),
-	locked_until: number(),
-	content_hash: string().nullable(),
-	inserter_type: string(),
-	inserter_id: string()
-});
 /**
-
 *  As arguments can be undefined (user can not send them at all), we have to have default values: page=1, size=20
-
 *  Page number starts from 1, as UI usually shows to user in pagination element
-
 *  Ordering is consistent because we use height as first ordering parameter
-
 */
-async function getAccessGrantsGranted(kwilClient, params) {
-	const inputs = GetAccessGrantsGrantedInputSchema.parse(params);
+async function getGrantsPaginated(kwilClient, params) {
+	const inputs = GetGrantsPaginatedInputSchema.parse(params);
 	return await kwilClient.call({
 		name: "get_access_grants_granted",
 		inputs
 	});
 }
-const GetAccessGrantsGrantedCountInputSchema = object({ user_id: uuid().nullable() });
-const GetAccessGrantsGrantedCountOutputSchema = object({ count: number() });
-async function getAccessGrantsGrantedCount(kwilClient, params) {
-	const inputs = GetAccessGrantsGrantedCountInputSchema.parse(params);
+const GetGrantsCountInputSchema = object({ user_id: uuid().nullable() });
+const GetGrantsCountOutputSchema = object({ count: number() });
+async function getGrantsCount(kwilClient, params) {
+	const inputs = GetGrantsCountInputSchema.parse(params);
 	return await kwilClient.call({
 		name: "get_access_grants_granted_count",
 		inputs
 	}).then((result) => result[0]);
 }
-const HasLockedAccessGrantsInputSchema = object({ id: uuid() });
-const HasLockedAccessGrantsOutputSchema = object({ has: boolean() });
 const DagMessageInputSchema = object({
 	dag_owner_wallet_identifier: string(),
 	dag_grantee_wallet_identifier: string(),
@@ -4182,21 +3698,13 @@ async function dagMessage(kwilClient, params) {
 		inputs
 	}).then((result) => result[0]);
 }
-const CreateAgByDagForCopyInputSchema = object({
+const CreateAccessGrantByDagInputSchema = object({
 	dag_owner_wallet_identifier: string(),
 	dag_grantee_wallet_identifier: string(),
 	dag_data_id: uuid(),
 	dag_locked_until: number(),
 	dag_content_hash: string(),
 	dag_signature: string()
-});
-const CreateAccessGrantInputSchema = object({
-	grantee_wallet_identifier: string(),
-	data_id: uuid(),
-	locked_until: number(),
-	content_hash: string(),
-	inserter_type: string(),
-	inserter_id: string()
 });
 const GetAccessGrantsForCredentialInputSchema = object({ credential_id: uuid() });
 const GetAccessGrantsForCredentialOutputSchema = object({
@@ -4205,18 +3713,15 @@ const GetAccessGrantsForCredentialOutputSchema = object({
 	ag_grantee_wallet_identifier: string(),
 	data_id: uuid(),
 	locked_until: number(),
-	content_hash: string().nullable(),
+	content_hash: string(),
 	inserter_type: string(),
 	inserter_id: string()
 });
 const HasProfileInputSchema = object({ address: string() });
 const HasProfileOutputSchema = object({ has_profile: boolean() });
 /**
-
 *  OTHER ACTIONS
-
 *  Should we improve it to work with near wallets too?
-
 */
 async function hasProfile(kwilClient, params) {
 	const inputs = HasProfileInputSchema.parse(params);
@@ -4225,32 +3730,6 @@ async function hasProfile(kwilClient, params) {
 		inputs
 	}, void 0).then((result) => result[0]);
 }
-const AddPassportingClubAsOwnerInputSchema = object({
-	id: uuid(),
-	name: string()
-});
-const DeletePassportingClubAsOwnerInputSchema = object({ id: uuid() });
-const AddPassportingPeerAsOwnerInputSchema = object({
-	id: uuid(),
-	name: string(),
-	issuer_public_key: string(),
-	passporting_server_url_base: string()
-});
-const DeletePassportingPeerAsOwnerInputSchema = object({ id: uuid() });
-const UpdatePassportingPeerAsOwnerInputSchema = object({
-	id: uuid(),
-	name: string(),
-	issuer_public_key: string(),
-	passporting_server_url_base: string()
-});
-const AddPeerToClubAsOwnerInputSchema = object({
-	passporting_club_id: uuid(),
-	passporting_peer_id: uuid()
-});
-const DeletePeerFromClubAsOwnerInputSchema = object({
-	passporting_club_id: uuid(),
-	passporting_peer_id: uuid()
-});
 const GetPassportingPeersOutputSchema = object({
 	id: uuid(),
 	name: string(),
@@ -4265,17 +3744,1800 @@ const GetPassportingPeersOutputSchema = object({
 async function addWallets(kwilClient, wallets) {
 	await Promise.all(wallets.map((wallet) => addWallet(kwilClient, wallet)));
 }
+async function removeWallets(kwilClient, ids) {
+	await Promise.all(ids.map((id) => removeWallet(kwilClient, { id })));
+}
 const GET_GRANTS_DEFAULT_RECORDS_PER_PAGE = 10;
 async function getGrants(kwilClient, params = {
 	page: 1,
 	size: GET_GRANTS_DEFAULT_RECORDS_PER_PAGE,
 	user_id: null
 }) {
-	return getAccessGrantsGranted(kwilClient, {
+	return getGrantsPaginated(kwilClient, {
 		page: params.page ?? 1,
 		size: params.size ?? 10,
 		user_id: params.user_id ?? null
 	});
+}
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/bind.js
+var require_bind = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/bind.js"(exports, module) {
+	module.exports = function bind$2(fn, thisArg) {
+		return function wrap() {
+			var args = new Array(arguments.length);
+			for (var i = 0; i < args.length; i++) args[i] = arguments[i];
+			return fn.apply(thisArg, args);
+		};
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/utils.js
+var require_utils$11 = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/utils.js"(exports, module) {
+	var bind$1 = require_bind();
+	var toString = Object.prototype.toString;
+	var kindOf = function(cache) {
+		return function(thing) {
+			var str = toString.call(thing);
+			return cache[str] || (cache[str] = str.slice(8, -1).toLowerCase());
+		};
+	}(Object.create(null));
+	function kindOfTest(type) {
+		type = type.toLowerCase();
+		return function isKindOf(thing) {
+			return kindOf(thing) === type;
+		};
+	}
+	/**
+	* Determine if a value is an Array
+	*
+	* @param {Object} val The value to test
+	* @returns {boolean} True if value is an Array, otherwise false
+	*/
+	function isArray$1(val) {
+		return Array.isArray(val);
+	}
+	/**
+	* Determine if a value is undefined
+	*
+	* @param {Object} val The value to test
+	* @returns {boolean} True if the value is undefined, otherwise false
+	*/
+	function isUndefined$1(val) {
+		return typeof val === "undefined";
+	}
+	/**
+	* Determine if a value is a Buffer
+	*
+	* @param {Object} val The value to test
+	* @returns {boolean} True if value is a Buffer, otherwise false
+	*/
+	function isBuffer(val) {
+		return val !== null && !isUndefined$1(val) && val.constructor !== null && !isUndefined$1(val.constructor) && typeof val.constructor.isBuffer === "function" && val.constructor.isBuffer(val);
+	}
+	/**
+	* Determine if a value is an ArrayBuffer
+	*
+	* @function
+	* @param {Object} val The value to test
+	* @returns {boolean} True if value is an ArrayBuffer, otherwise false
+	*/
+	var isArrayBuffer = kindOfTest("ArrayBuffer");
+	/**
+	* Determine if a value is a view on an ArrayBuffer
+	*
+	* @param {Object} val The value to test
+	* @returns {boolean} True if value is a view on an ArrayBuffer, otherwise false
+	*/
+	function isArrayBufferView(val) {
+		var result;
+		if (typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView) result = ArrayBuffer.isView(val);
+		else result = val && val.buffer && isArrayBuffer(val.buffer);
+		return result;
+	}
+	/**
+	* Determine if a value is a String
+	*
+	* @param {Object} val The value to test
+	* @returns {boolean} True if value is a String, otherwise false
+	*/
+	function isString$1(val) {
+		return typeof val === "string";
+	}
+	/**
+	* Determine if a value is a Number
+	*
+	* @param {Object} val The value to test
+	* @returns {boolean} True if value is a Number, otherwise false
+	*/
+	function isNumber$1(val) {
+		return typeof val === "number";
+	}
+	/**
+	* Determine if a value is an Object
+	*
+	* @param {Object} val The value to test
+	* @returns {boolean} True if value is an Object, otherwise false
+	*/
+	function isObject(val) {
+		return val !== null && typeof val === "object";
+	}
+	/**
+	* Determine if a value is a plain Object
+	*
+	* @param {Object} val The value to test
+	* @return {boolean} True if value is a plain Object, otherwise false
+	*/
+	function isPlainObject(val) {
+		if (kindOf(val) !== "object") return false;
+		var prototype$1 = Object.getPrototypeOf(val);
+		return prototype$1 === null || prototype$1 === Object.prototype;
+	}
+	/**
+	* Determine if a value is a Date
+	*
+	* @function
+	* @param {Object} val The value to test
+	* @returns {boolean} True if value is a Date, otherwise false
+	*/
+	var isDate = kindOfTest("Date");
+	/**
+	* Determine if a value is a File
+	*
+	* @function
+	* @param {Object} val The value to test
+	* @returns {boolean} True if value is a File, otherwise false
+	*/
+	var isFile = kindOfTest("File");
+	/**
+	* Determine if a value is a Blob
+	*
+	* @function
+	* @param {Object} val The value to test
+	* @returns {boolean} True if value is a Blob, otherwise false
+	*/
+	var isBlob = kindOfTest("Blob");
+	/**
+	* Determine if a value is a FileList
+	*
+	* @function
+	* @param {Object} val The value to test
+	* @returns {boolean} True if value is a File, otherwise false
+	*/
+	var isFileList = kindOfTest("FileList");
+	/**
+	* Determine if a value is a Function
+	*
+	* @param {Object} val The value to test
+	* @returns {boolean} True if value is a Function, otherwise false
+	*/
+	function isFunction(val) {
+		return toString.call(val) === "[object Function]";
+	}
+	/**
+	* Determine if a value is a Stream
+	*
+	* @param {Object} val The value to test
+	* @returns {boolean} True if value is a Stream, otherwise false
+	*/
+	function isStream(val) {
+		return isObject(val) && isFunction(val.pipe);
+	}
+	/**
+	* Determine if a value is a FormData
+	*
+	* @param {Object} thing The value to test
+	* @returns {boolean} True if value is an FormData, otherwise false
+	*/
+	function isFormData$1(thing) {
+		var pattern = "[object FormData]";
+		return thing && (typeof FormData === "function" && thing instanceof FormData || toString.call(thing) === pattern || isFunction(thing.toString) && thing.toString() === pattern);
+	}
+	/**
+	* Determine if a value is a URLSearchParams object
+	* @function
+	* @param {Object} val The value to test
+	* @returns {boolean} True if value is a URLSearchParams object, otherwise false
+	*/
+	var isURLSearchParams = kindOfTest("URLSearchParams");
+	/**
+	* Trim excess whitespace off the beginning and end of a string
+	*
+	* @param {String} str The String to trim
+	* @returns {String} The String freed of excess whitespace
+	*/
+	function trim(str) {
+		return str.trim ? str.trim() : str.replace(/^\s+|\s+$/g, "");
+	}
+	/**
+	* Determine if we're running in a standard browser environment
+	*
+	* This allows axios to run in a web worker, and react-native.
+	* Both environments support XMLHttpRequest, but not fully standard globals.
+	*
+	* web workers:
+	*  typeof window -> undefined
+	*  typeof document -> undefined
+	*
+	* react-native:
+	*  navigator.product -> 'ReactNative'
+	* nativescript
+	*  navigator.product -> 'NativeScript' or 'NS'
+	*/
+	function isStandardBrowserEnv$1() {
+		if (typeof navigator !== "undefined" && (navigator.product === "ReactNative" || navigator.product === "NativeScript" || navigator.product === "NS")) return false;
+		return typeof window !== "undefined" && typeof document !== "undefined";
+	}
+	/**
+	* Iterate over an Array or an Object invoking a function for each item.
+	*
+	* If `obj` is an Array callback will be called passing
+	* the value, index, and complete array for each item.
+	*
+	* If 'obj' is an Object callback will be called passing
+	* the value, key, and complete object for each property.
+	*
+	* @param {Object|Array} obj The object to iterate
+	* @param {Function} fn The callback to invoke for each item
+	*/
+	function forEach(obj, fn) {
+		if (obj === null || typeof obj === "undefined") return;
+		if (typeof obj !== "object") obj = [obj];
+		if (isArray$1(obj)) for (var i = 0, l = obj.length; i < l; i++) fn.call(null, obj[i], i, obj);
+		else for (var key in obj) if (Object.prototype.hasOwnProperty.call(obj, key)) fn.call(null, obj[key], key, obj);
+	}
+	/**
+	* Accepts varargs expecting each argument to be an object, then
+	* immutably merges the properties of each object and returns result.
+	*
+	* When multiple objects contain the same key the later object in
+	* the arguments list will take precedence.
+	*
+	* Example:
+	*
+	* ```js
+	* var result = merge({foo: 123}, {foo: 456});
+	* console.log(result.foo); // outputs 456
+	* ```
+	*
+	* @param {Object} obj1 Object to merge
+	* @returns {Object} Result of all merge properties
+	*/
+	function merge() {
+		var result = {};
+		function assignValue(val, key) {
+			if (isPlainObject(result[key]) && isPlainObject(val)) result[key] = merge(result[key], val);
+			else if (isPlainObject(val)) result[key] = merge({}, val);
+			else if (isArray$1(val)) result[key] = val.slice();
+			else result[key] = val;
+		}
+		for (var i = 0, l = arguments.length; i < l; i++) forEach(arguments[i], assignValue);
+		return result;
+	}
+	/**
+	* Extends object a by mutably adding to it the properties of object b.
+	*
+	* @param {Object} a The object to be extended
+	* @param {Object} b The object to copy properties from
+	* @param {Object} thisArg The object to bind function to
+	* @return {Object} The resulting value of object a
+	*/
+	function extend(a, b, thisArg) {
+		forEach(b, function assignValue(val, key) {
+			if (thisArg && typeof val === "function") a[key] = bind$1(val, thisArg);
+			else a[key] = val;
+		});
+		return a;
+	}
+	/**
+	* Remove byte order marker. This catches EF BB BF (the UTF-8 BOM)
+	*
+	* @param {string} content with BOM
+	* @return {string} content value without BOM
+	*/
+	function stripBOM(content) {
+		if (content.charCodeAt(0) === 65279) content = content.slice(1);
+		return content;
+	}
+	/**
+	* Inherit the prototype methods from one constructor into another
+	* @param {function} constructor
+	* @param {function} superConstructor
+	* @param {object} [props]
+	* @param {object} [descriptors]
+	*/
+	function inherits(constructor, superConstructor, props, descriptors$1) {
+		constructor.prototype = Object.create(superConstructor.prototype, descriptors$1);
+		constructor.prototype.constructor = constructor;
+		props && Object.assign(constructor.prototype, props);
+	}
+	/**
+	* Resolve object with deep prototype chain to a flat object
+	* @param {Object} sourceObj source object
+	* @param {Object} [destObj]
+	* @param {Function} [filter]
+	* @returns {Object}
+	*/
+	function toFlatObject(sourceObj, destObj, filter) {
+		var props;
+		var i;
+		var prop;
+		var merged = {};
+		destObj = destObj || {};
+		do {
+			props = Object.getOwnPropertyNames(sourceObj);
+			i = props.length;
+			while (i-- > 0) {
+				prop = props[i];
+				if (!merged[prop]) {
+					destObj[prop] = sourceObj[prop];
+					merged[prop] = true;
+				}
+			}
+			sourceObj = Object.getPrototypeOf(sourceObj);
+		} while (sourceObj && (!filter || filter(sourceObj, destObj)) && sourceObj !== Object.prototype);
+		return destObj;
+	}
+	function endsWith(str, searchString, position) {
+		str = String(str);
+		if (position === void 0 || position > str.length) position = str.length;
+		position -= searchString.length;
+		var lastIndex = str.indexOf(searchString, position);
+		return lastIndex !== -1 && lastIndex === position;
+	}
+	/**
+	* Returns new array from array like object
+	* @param {*} [thing]
+	* @returns {Array}
+	*/
+	function toArray(thing) {
+		if (!thing) return null;
+		var i = thing.length;
+		if (isUndefined$1(i)) return null;
+		var arr = new Array(i);
+		while (i-- > 0) arr[i] = thing[i];
+		return arr;
+	}
+	var isTypedArray = function(TypedArray) {
+		return function(thing) {
+			return TypedArray && thing instanceof TypedArray;
+		};
+	}(typeof Uint8Array !== "undefined" && Object.getPrototypeOf(Uint8Array));
+	module.exports = {
+		isArray: isArray$1,
+		isArrayBuffer,
+		isBuffer,
+		isFormData: isFormData$1,
+		isArrayBufferView,
+		isString: isString$1,
+		isNumber: isNumber$1,
+		isObject,
+		isPlainObject,
+		isUndefined: isUndefined$1,
+		isDate,
+		isFile,
+		isBlob,
+		isFunction,
+		isStream,
+		isURLSearchParams,
+		isStandardBrowserEnv: isStandardBrowserEnv$1,
+		forEach,
+		merge,
+		extend,
+		trim,
+		stripBOM,
+		inherits,
+		toFlatObject,
+		kindOf,
+		kindOfTest,
+		endsWith,
+		toArray,
+		isTypedArray,
+		isFileList
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/buildURL.js
+var require_buildURL = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/buildURL.js"(exports, module) {
+	var utils$16 = require_utils$11();
+	function encode$2(val) {
+		return encodeURIComponent(val).replace(/%3A/gi, ":").replace(/%24/g, "$").replace(/%2C/gi, ",").replace(/%20/g, "+").replace(/%5B/gi, "[").replace(/%5D/gi, "]");
+	}
+	/**
+	* Build a URL by appending params to the end
+	*
+	* @param {string} url The base of the url (e.g., http://www.google.com)
+	* @param {object} [params] The params to be appended
+	* @returns {string} The formatted url
+	*/
+	module.exports = function buildURL$3(url, params, paramsSerializer) {
+		if (!params) return url;
+		var serializedParams;
+		if (paramsSerializer) serializedParams = paramsSerializer(params);
+		else if (utils$16.isURLSearchParams(params)) serializedParams = params.toString();
+		else {
+			var parts = [];
+			utils$16.forEach(params, function serialize(val, key) {
+				if (val === null || typeof val === "undefined") return;
+				if (utils$16.isArray(val)) key = key + "[]";
+				else val = [val];
+				utils$16.forEach(val, function parseValue(v) {
+					if (utils$16.isDate(v)) v = v.toISOString();
+					else if (utils$16.isObject(v)) v = JSON.stringify(v);
+					parts.push(encode$2(key) + "=" + encode$2(v));
+				});
+			});
+			serializedParams = parts.join("&");
+		}
+		if (serializedParams) {
+			var hashmarkIndex = url.indexOf("#");
+			if (hashmarkIndex !== -1) url = url.slice(0, hashmarkIndex);
+			url += (url.indexOf("?") === -1 ? "?" : "&") + serializedParams;
+		}
+		return url;
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/core/InterceptorManager.js
+var require_InterceptorManager = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/core/InterceptorManager.js"(exports, module) {
+	var utils$15 = require_utils$11();
+	function InterceptorManager$1() {
+		this.handlers = [];
+	}
+	/**
+	* Add a new interceptor to the stack
+	*
+	* @param {Function} fulfilled The function to handle `then` for a `Promise`
+	* @param {Function} rejected The function to handle `reject` for a `Promise`
+	*
+	* @return {Number} An ID used to remove interceptor later
+	*/
+	InterceptorManager$1.prototype.use = function use(fulfilled, rejected, options) {
+		this.handlers.push({
+			fulfilled,
+			rejected,
+			synchronous: options ? options.synchronous : false,
+			runWhen: options ? options.runWhen : null
+		});
+		return this.handlers.length - 1;
+	};
+	/**
+	* Remove an interceptor from the stack
+	*
+	* @param {Number} id The ID that was returned by `use`
+	*/
+	InterceptorManager$1.prototype.eject = function eject(id) {
+		if (this.handlers[id]) this.handlers[id] = null;
+	};
+	/**
+	* Iterate over all the registered interceptors
+	*
+	* This method is particularly useful for skipping over any
+	* interceptors that may have become `null` calling `eject`.
+	*
+	* @param {Function} fn The function to call for each interceptor
+	*/
+	InterceptorManager$1.prototype.forEach = function forEach$1(fn) {
+		utils$15.forEach(this.handlers, function forEachHandler(h) {
+			if (h !== null) fn(h);
+		});
+	};
+	module.exports = InterceptorManager$1;
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/normalizeHeaderName.js
+var require_normalizeHeaderName = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/normalizeHeaderName.js"(exports, module) {
+	var utils$14 = require_utils$11();
+	module.exports = function normalizeHeaderName$1(headers, normalizedName) {
+		utils$14.forEach(headers, function processHeader(value, name) {
+			if (name !== normalizedName && name.toUpperCase() === normalizedName.toUpperCase()) {
+				headers[normalizedName] = value;
+				delete headers[name];
+			}
+		});
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/core/AxiosError.js
+var require_AxiosError = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/core/AxiosError.js"(exports, module) {
+	var utils$13 = require_utils$11();
+	/**
+	* Create an Error with the specified message, config, error code, request and response.
+	*
+	* @param {string} message The error message.
+	* @param {string} [code] The error code (for example, 'ECONNABORTED').
+	* @param {Object} [config] The config.
+	* @param {Object} [request] The request.
+	* @param {Object} [response] The response.
+	* @returns {Error} The created error.
+	*/
+	function AxiosError$5(message, code, config$1, request, response) {
+		Error.call(this);
+		this.message = message;
+		this.name = "AxiosError";
+		code && (this.code = code);
+		config$1 && (this.config = config$1);
+		request && (this.request = request);
+		response && (this.response = response);
+	}
+	utils$13.inherits(AxiosError$5, Error, { toJSON: function toJSON() {
+		return {
+			message: this.message,
+			name: this.name,
+			description: this.description,
+			number: this.number,
+			fileName: this.fileName,
+			lineNumber: this.lineNumber,
+			columnNumber: this.columnNumber,
+			stack: this.stack,
+			config: this.config,
+			code: this.code,
+			status: this.response && this.response.status ? this.response.status : null
+		};
+	} });
+	var prototype = AxiosError$5.prototype;
+	var descriptors = {};
+	[
+		"ERR_BAD_OPTION_VALUE",
+		"ERR_BAD_OPTION",
+		"ECONNABORTED",
+		"ETIMEDOUT",
+		"ERR_NETWORK",
+		"ERR_FR_TOO_MANY_REDIRECTS",
+		"ERR_DEPRECATED",
+		"ERR_BAD_RESPONSE",
+		"ERR_BAD_REQUEST",
+		"ERR_CANCELED"
+	].forEach(function(code) {
+		descriptors[code] = { value: code };
+	});
+	Object.defineProperties(AxiosError$5, descriptors);
+	Object.defineProperty(prototype, "isAxiosError", { value: true });
+	AxiosError$5.from = function(error, code, config$1, request, response, customProps) {
+		var axiosError = Object.create(prototype);
+		utils$13.toFlatObject(error, axiosError, function filter(obj) {
+			return obj !== Error.prototype;
+		});
+		AxiosError$5.call(axiosError, error.message, code, config$1, request, response);
+		axiosError.name = error.name;
+		customProps && Object.assign(axiosError, customProps);
+		return axiosError;
+	};
+	module.exports = AxiosError$5;
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/defaults/transitional.js
+var require_transitional = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/defaults/transitional.js"(exports, module) {
+	module.exports = {
+		silentJSONParsing: true,
+		forcedJSONParsing: true,
+		clarifyTimeoutError: false
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/toFormData.js
+var require_toFormData = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/toFormData.js"(exports, module) {
+	var utils$12 = require_utils$11();
+	/**
+	* Convert a data object to FormData
+	* @param {Object} obj
+	* @param {?Object} [formData]
+	* @returns {Object}
+	**/
+	function toFormData$1(obj, formData) {
+		formData = formData || new FormData();
+		var stack = [];
+		function convertValue(value) {
+			if (value === null) return "";
+			if (utils$12.isDate(value)) return value.toISOString();
+			if (utils$12.isArrayBuffer(value) || utils$12.isTypedArray(value)) return typeof Blob === "function" ? new Blob([value]) : Buffer.from(value);
+			return value;
+		}
+		function build(data, parentKey) {
+			if (utils$12.isPlainObject(data) || utils$12.isArray(data)) {
+				if (stack.indexOf(data) !== -1) throw Error("Circular reference detected in " + parentKey);
+				stack.push(data);
+				utils$12.forEach(data, function each(value, key) {
+					if (utils$12.isUndefined(value)) return;
+					var fullKey = parentKey ? parentKey + "." + key : key;
+					var arr;
+					if (value && !parentKey && typeof value === "object") {
+						if (utils$12.endsWith(key, "{}")) value = JSON.stringify(value);
+						else if (utils$12.endsWith(key, "[]") && (arr = utils$12.toArray(value))) {
+							arr.forEach(function(el) {
+								!utils$12.isUndefined(el) && formData.append(fullKey, convertValue(el));
+							});
+							return;
+						}
+					}
+					build(value, fullKey);
+				});
+				stack.pop();
+			} else formData.append(parentKey, convertValue(data));
+		}
+		build(obj);
+		return formData;
+	}
+	module.exports = toFormData$1;
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/core/settle.js
+var require_settle = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/core/settle.js"(exports, module) {
+	var AxiosError$4 = require_AxiosError();
+	/**
+	* Resolve or reject a Promise based on response status.
+	*
+	* @param {Function} resolve A function that resolves the promise.
+	* @param {Function} reject A function that rejects the promise.
+	* @param {object} response The response.
+	*/
+	module.exports = function settle$2(resolve, reject, response) {
+		var validateStatus = response.config.validateStatus;
+		if (!response.status || !validateStatus || validateStatus(response.status)) resolve(response);
+		else reject(new AxiosError$4("Request failed with status code " + response.status, [AxiosError$4.ERR_BAD_REQUEST, AxiosError$4.ERR_BAD_RESPONSE][Math.floor(response.status / 100) - 4], response.config, response.request, response));
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/cookies.js
+var require_cookies = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/cookies.js"(exports, module) {
+	var utils$11 = require_utils$11();
+	module.exports = utils$11.isStandardBrowserEnv() ? function standardBrowserEnv() {
+		return {
+			write: function write(name, value, expires, path, domain, secure) {
+				var cookie = [];
+				cookie.push(name + "=" + encodeURIComponent(value));
+				if (utils$11.isNumber(expires)) cookie.push("expires=" + new Date(expires).toGMTString());
+				if (utils$11.isString(path)) cookie.push("path=" + path);
+				if (utils$11.isString(domain)) cookie.push("domain=" + domain);
+				if (secure === true) cookie.push("secure");
+				document.cookie = cookie.join("; ");
+			},
+			read: function read(name) {
+				var match = document.cookie.match(new RegExp("(^|;\\s*)(" + name + ")=([^;]*)"));
+				return match ? decodeURIComponent(match[3]) : null;
+			},
+			remove: function remove(name) {
+				this.write(name, "", Date.now() - 864e5);
+			}
+		};
+	}() : function nonStandardBrowserEnv() {
+		return {
+			write: function write() {},
+			read: function read() {
+				return null;
+			},
+			remove: function remove() {}
+		};
+	}();
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/isAbsoluteURL.js
+var require_isAbsoluteURL = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/isAbsoluteURL.js"(exports, module) {
+	/**
+	* Determines whether the specified URL is absolute
+	*
+	* @param {string} url The URL to test
+	* @returns {boolean} True if the specified URL is absolute, otherwise false
+	*/
+	module.exports = function isAbsoluteURL$1(url) {
+		return /^([a-z][a-z\d+\-.]*:)?\/\//i.test(url);
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/combineURLs.js
+var require_combineURLs = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/combineURLs.js"(exports, module) {
+	/**
+	* Creates a new URL by combining the specified URLs
+	*
+	* @param {string} baseURL The base URL
+	* @param {string} relativeURL The relative URL
+	* @returns {string} The combined URL
+	*/
+	module.exports = function combineURLs$1(baseURL, relativeURL) {
+		return relativeURL ? baseURL.replace(/\/+$/, "") + "/" + relativeURL.replace(/^\/+/, "") : baseURL;
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/core/buildFullPath.js
+var require_buildFullPath = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/core/buildFullPath.js"(exports, module) {
+	var isAbsoluteURL = require_isAbsoluteURL();
+	var combineURLs = require_combineURLs();
+	/**
+	* Creates a new URL by combining the baseURL with the requestedURL,
+	* only when the requestedURL is not already an absolute URL.
+	* If the requestURL is absolute, this function returns the requestedURL untouched.
+	*
+	* @param {string} baseURL The base URL
+	* @param {string} requestedURL Absolute or relative URL to combine
+	* @returns {string} The combined full path
+	*/
+	module.exports = function buildFullPath$3(baseURL, requestedURL) {
+		if (baseURL && !isAbsoluteURL(requestedURL)) return combineURLs(baseURL, requestedURL);
+		return requestedURL;
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/parseHeaders.js
+var require_parseHeaders = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/parseHeaders.js"(exports, module) {
+	var utils$10 = require_utils$11();
+	var ignoreDuplicateOf = [
+		"age",
+		"authorization",
+		"content-length",
+		"content-type",
+		"etag",
+		"expires",
+		"from",
+		"host",
+		"if-modified-since",
+		"if-unmodified-since",
+		"last-modified",
+		"location",
+		"max-forwards",
+		"proxy-authorization",
+		"referer",
+		"retry-after",
+		"user-agent"
+	];
+	/**
+	* Parse headers into an object
+	*
+	* ```
+	* Date: Wed, 27 Aug 2014 08:58:49 GMT
+	* Content-Type: application/json
+	* Connection: keep-alive
+	* Transfer-Encoding: chunked
+	* ```
+	*
+	* @param {String} headers Headers needing to be parsed
+	* @returns {Object} Headers parsed into an object
+	*/
+	module.exports = function parseHeaders$1(headers) {
+		var parsed = {};
+		var key;
+		var val;
+		var i;
+		if (!headers) return parsed;
+		utils$10.forEach(headers.split("\n"), function parser(line) {
+			i = line.indexOf(":");
+			key = utils$10.trim(line.substr(0, i)).toLowerCase();
+			val = utils$10.trim(line.substr(i + 1));
+			if (key) {
+				if (parsed[key] && ignoreDuplicateOf.indexOf(key) >= 0) return;
+				if (key === "set-cookie") parsed[key] = (parsed[key] ? parsed[key] : []).concat([val]);
+				else parsed[key] = parsed[key] ? parsed[key] + ", " + val : val;
+			}
+		});
+		return parsed;
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/isURLSameOrigin.js
+var require_isURLSameOrigin = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/isURLSameOrigin.js"(exports, module) {
+	var utils$9 = require_utils$11();
+	module.exports = utils$9.isStandardBrowserEnv() ? function standardBrowserEnv() {
+		var msie = /(msie|trident)/i.test(navigator.userAgent);
+		var urlParsingNode = document.createElement("a");
+		var originURL;
+		/**
+		* Parse a URL to discover it's components
+		*
+		* @param {String} url The URL to be parsed
+		* @returns {Object}
+		*/
+		function resolveURL(url) {
+			var href = url;
+			if (msie) {
+				urlParsingNode.setAttribute("href", href);
+				href = urlParsingNode.href;
+			}
+			urlParsingNode.setAttribute("href", href);
+			return {
+				href: urlParsingNode.href,
+				protocol: urlParsingNode.protocol ? urlParsingNode.protocol.replace(/:$/, "") : "",
+				host: urlParsingNode.host,
+				search: urlParsingNode.search ? urlParsingNode.search.replace(/^\?/, "") : "",
+				hash: urlParsingNode.hash ? urlParsingNode.hash.replace(/^#/, "") : "",
+				hostname: urlParsingNode.hostname,
+				port: urlParsingNode.port,
+				pathname: urlParsingNode.pathname.charAt(0) === "/" ? urlParsingNode.pathname : "/" + urlParsingNode.pathname
+			};
+		}
+		originURL = resolveURL(window.location.href);
+		/**
+		* Determine if a URL shares the same origin as the current location
+		*
+		* @param {String} requestURL The URL to test
+		* @returns {boolean} True if URL shares the same origin, otherwise false
+		*/
+		return function isURLSameOrigin$1(requestURL) {
+			var parsed = utils$9.isString(requestURL) ? resolveURL(requestURL) : requestURL;
+			return parsed.protocol === originURL.protocol && parsed.host === originURL.host;
+		};
+	}() : function nonStandardBrowserEnv() {
+		return function isURLSameOrigin$1() {
+			return true;
+		};
+	}();
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/cancel/CanceledError.js
+var require_CanceledError = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/cancel/CanceledError.js"(exports, module) {
+	var AxiosError$3 = require_AxiosError();
+	var utils$8 = require_utils$11();
+	/**
+	* A `CanceledError` is an object that is thrown when an operation is canceled.
+	*
+	* @class
+	* @param {string=} message The message.
+	*/
+	function CanceledError$3(message) {
+		AxiosError$3.call(this, message == null ? "canceled" : message, AxiosError$3.ERR_CANCELED);
+		this.name = "CanceledError";
+	}
+	utils$8.inherits(CanceledError$3, AxiosError$3, { __CANCEL__: true });
+	module.exports = CanceledError$3;
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/parseProtocol.js
+var require_parseProtocol = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/parseProtocol.js"(exports, module) {
+	module.exports = function parseProtocol$1(url) {
+		var match = /^([-+\w]{1,25})(:?\/\/|:)/.exec(url);
+		return match && match[1] || "";
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/adapters/xhr.js
+var require_xhr = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/adapters/xhr.js"(exports, module) {
+	var utils$7 = require_utils$11();
+	var settle$1 = require_settle();
+	var cookies = require_cookies();
+	var buildURL$2 = require_buildURL();
+	var buildFullPath$2 = require_buildFullPath();
+	var parseHeaders = require_parseHeaders();
+	var isURLSameOrigin = require_isURLSameOrigin();
+	var transitionalDefaults$1 = require_transitional();
+	var AxiosError$2 = require_AxiosError();
+	var CanceledError$2 = require_CanceledError();
+	var parseProtocol = require_parseProtocol();
+	module.exports = function xhrAdapter(config$1) {
+		return new Promise(function dispatchXhrRequest(resolve, reject) {
+			var requestData = config$1.data;
+			var requestHeaders = config$1.headers;
+			var responseType = config$1.responseType;
+			var onCanceled;
+			function done() {
+				if (config$1.cancelToken) config$1.cancelToken.unsubscribe(onCanceled);
+				if (config$1.signal) config$1.signal.removeEventListener("abort", onCanceled);
+			}
+			if (utils$7.isFormData(requestData) && utils$7.isStandardBrowserEnv()) delete requestHeaders["Content-Type"];
+			var request = new XMLHttpRequest();
+			if (config$1.auth) {
+				var username = config$1.auth.username || "";
+				var password = config$1.auth.password ? unescape(encodeURIComponent(config$1.auth.password)) : "";
+				requestHeaders.Authorization = "Basic " + btoa(username + ":" + password);
+			}
+			var fullPath = buildFullPath$2(config$1.baseURL, config$1.url);
+			request.open(config$1.method.toUpperCase(), buildURL$2(fullPath, config$1.params, config$1.paramsSerializer), true);
+			request.timeout = config$1.timeout;
+			function onloadend() {
+				if (!request) return;
+				var responseHeaders = "getAllResponseHeaders" in request ? parseHeaders(request.getAllResponseHeaders()) : null;
+				var responseData = !responseType || responseType === "text" || responseType === "json" ? request.responseText : request.response;
+				var response = {
+					data: responseData,
+					status: request.status,
+					statusText: request.statusText,
+					headers: responseHeaders,
+					config: config$1,
+					request
+				};
+				settle$1(function _resolve(value) {
+					resolve(value);
+					done();
+				}, function _reject(err) {
+					reject(err);
+					done();
+				}, response);
+				request = null;
+			}
+			if ("onloadend" in request) request.onloadend = onloadend;
+			else request.onreadystatechange = function handleLoad() {
+				if (!request || request.readyState !== 4) return;
+				if (request.status === 0 && !(request.responseURL && request.responseURL.indexOf("file:") === 0)) return;
+				setTimeout(onloadend);
+			};
+			request.onabort = function handleAbort() {
+				if (!request) return;
+				reject(new AxiosError$2("Request aborted", AxiosError$2.ECONNABORTED, config$1, request));
+				request = null;
+			};
+			request.onerror = function handleError() {
+				reject(new AxiosError$2("Network Error", AxiosError$2.ERR_NETWORK, config$1, request, request));
+				request = null;
+			};
+			request.ontimeout = function handleTimeout() {
+				var timeoutErrorMessage = config$1.timeout ? "timeout of " + config$1.timeout + "ms exceeded" : "timeout exceeded";
+				var transitional = config$1.transitional || transitionalDefaults$1;
+				if (config$1.timeoutErrorMessage) timeoutErrorMessage = config$1.timeoutErrorMessage;
+				reject(new AxiosError$2(timeoutErrorMessage, transitional.clarifyTimeoutError ? AxiosError$2.ETIMEDOUT : AxiosError$2.ECONNABORTED, config$1, request));
+				request = null;
+			};
+			if (utils$7.isStandardBrowserEnv()) {
+				var xsrfValue = (config$1.withCredentials || isURLSameOrigin(fullPath)) && config$1.xsrfCookieName ? cookies.read(config$1.xsrfCookieName) : void 0;
+				if (xsrfValue) requestHeaders[config$1.xsrfHeaderName] = xsrfValue;
+			}
+			if ("setRequestHeader" in request) utils$7.forEach(requestHeaders, function setRequestHeader(val, key) {
+				if (typeof requestData === "undefined" && key.toLowerCase() === "content-type") delete requestHeaders[key];
+				else request.setRequestHeader(key, val);
+			});
+			if (!utils$7.isUndefined(config$1.withCredentials)) request.withCredentials = !!config$1.withCredentials;
+			if (responseType && responseType !== "json") request.responseType = config$1.responseType;
+			if (typeof config$1.onDownloadProgress === "function") request.addEventListener("progress", config$1.onDownloadProgress);
+			if (typeof config$1.onUploadProgress === "function" && request.upload) request.upload.addEventListener("progress", config$1.onUploadProgress);
+			if (config$1.cancelToken || config$1.signal) {
+				onCanceled = function(cancel) {
+					if (!request) return;
+					reject(!cancel || cancel && cancel.type ? new CanceledError$2() : cancel);
+					request.abort();
+					request = null;
+				};
+				config$1.cancelToken && config$1.cancelToken.subscribe(onCanceled);
+				if (config$1.signal) config$1.signal.aborted ? onCanceled() : config$1.signal.addEventListener("abort", onCanceled);
+			}
+			if (!requestData) requestData = null;
+			var protocol = parseProtocol(fullPath);
+			if (protocol && [
+				"http",
+				"https",
+				"file"
+			].indexOf(protocol) === -1) {
+				reject(new AxiosError$2("Unsupported protocol " + protocol + ":", AxiosError$2.ERR_BAD_REQUEST, config$1));
+				return;
+			}
+			request.send(requestData);
+		});
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/null.js
+var require_null = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/null.js"(exports, module) {
+	module.exports = null;
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/defaults/index.js
+var require_defaults = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/defaults/index.js"(exports, module) {
+	var utils$6 = require_utils$11();
+	var normalizeHeaderName = require_normalizeHeaderName();
+	var AxiosError$1 = require_AxiosError();
+	var transitionalDefaults = require_transitional();
+	var toFormData = require_toFormData();
+	var DEFAULT_CONTENT_TYPE = { "Content-Type": "application/x-www-form-urlencoded" };
+	function setContentTypeIfUnset(headers, value) {
+		if (!utils$6.isUndefined(headers) && utils$6.isUndefined(headers["Content-Type"])) headers["Content-Type"] = value;
+	}
+	function getDefaultAdapter() {
+		var adapter;
+		if (typeof XMLHttpRequest !== "undefined") adapter = require_xhr();
+		else if (typeof process !== "undefined" && Object.prototype.toString.call(process) === "[object process]") adapter = require_xhr();
+		return adapter;
+	}
+	function stringifySafely(rawValue, parser, encoder) {
+		if (utils$6.isString(rawValue)) try {
+			(parser || JSON.parse)(rawValue);
+			return utils$6.trim(rawValue);
+		} catch (e) {
+			if (e.name !== "SyntaxError") throw e;
+		}
+		return (encoder || JSON.stringify)(rawValue);
+	}
+	var defaults$3 = {
+		transitional: transitionalDefaults,
+		adapter: getDefaultAdapter(),
+		transformRequest: [function transformRequest(data, headers) {
+			normalizeHeaderName(headers, "Accept");
+			normalizeHeaderName(headers, "Content-Type");
+			if (utils$6.isFormData(data) || utils$6.isArrayBuffer(data) || utils$6.isBuffer(data) || utils$6.isStream(data) || utils$6.isFile(data) || utils$6.isBlob(data)) return data;
+			if (utils$6.isArrayBufferView(data)) return data.buffer;
+			if (utils$6.isURLSearchParams(data)) {
+				setContentTypeIfUnset(headers, "application/x-www-form-urlencoded;charset=utf-8");
+				return data.toString();
+			}
+			var isObjectPayload = utils$6.isObject(data);
+			var contentType = headers && headers["Content-Type"];
+			var isFileList$1;
+			if ((isFileList$1 = utils$6.isFileList(data)) || isObjectPayload && contentType === "multipart/form-data") {
+				var _FormData = this.env && this.env.FormData;
+				return toFormData(isFileList$1 ? { "files[]": data } : data, _FormData && new _FormData());
+			} else if (isObjectPayload || contentType === "application/json") {
+				setContentTypeIfUnset(headers, "application/json");
+				return stringifySafely(data);
+			}
+			return data;
+		}],
+		transformResponse: [function transformResponse(data) {
+			var transitional = this.transitional || defaults$3.transitional;
+			var silentJSONParsing = transitional && transitional.silentJSONParsing;
+			var forcedJSONParsing = transitional && transitional.forcedJSONParsing;
+			var strictJSONParsing = !silentJSONParsing && this.responseType === "json";
+			if (strictJSONParsing || forcedJSONParsing && utils$6.isString(data) && data.length) try {
+				return JSON.parse(data);
+			} catch (e) {
+				if (strictJSONParsing) {
+					if (e.name === "SyntaxError") throw AxiosError$1.from(e, AxiosError$1.ERR_BAD_RESPONSE, this, null, this.response);
+					throw e;
+				}
+			}
+			return data;
+		}],
+		timeout: 0,
+		xsrfCookieName: "XSRF-TOKEN",
+		xsrfHeaderName: "X-XSRF-TOKEN",
+		maxContentLength: -1,
+		maxBodyLength: -1,
+		env: { FormData: require_null() },
+		validateStatus: function validateStatus(status) {
+			return status >= 200 && status < 300;
+		},
+		headers: { common: { "Accept": "application/json, text/plain, */*" } }
+	};
+	utils$6.forEach([
+		"delete",
+		"get",
+		"head"
+	], function forEachMethodNoData(method) {
+		defaults$3.headers[method] = {};
+	});
+	utils$6.forEach([
+		"post",
+		"put",
+		"patch"
+	], function forEachMethodWithData(method) {
+		defaults$3.headers[method] = utils$6.merge(DEFAULT_CONTENT_TYPE);
+	});
+	module.exports = defaults$3;
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/core/transformData.js
+var require_transformData = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/core/transformData.js"(exports, module) {
+	var utils$5 = require_utils$11();
+	var defaults$2 = require_defaults();
+	/**
+	* Transform the data for a request or a response
+	*
+	* @param {Object|String} data The data to be transformed
+	* @param {Array} headers The headers for the request or response
+	* @param {Array|Function} fns A single function or Array of functions
+	* @returns {*} The resulting transformed data
+	*/
+	module.exports = function transformData$1(data, headers, fns) {
+		var context = this || defaults$2;
+		utils$5.forEach(fns, function transform$1(fn) {
+			data = fn.call(context, data, headers);
+		});
+		return data;
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/cancel/isCancel.js
+var require_isCancel = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/cancel/isCancel.js"(exports, module) {
+	module.exports = function isCancel$1(value) {
+		return !!(value && value.__CANCEL__);
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/core/dispatchRequest.js
+var require_dispatchRequest = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/core/dispatchRequest.js"(exports, module) {
+	var utils$4 = require_utils$11();
+	var transformData = require_transformData();
+	var isCancel = require_isCancel();
+	var defaults$1 = require_defaults();
+	var CanceledError$1 = require_CanceledError();
+	/**
+	* Throws a `CanceledError` if cancellation has been requested.
+	*/
+	function throwIfCancellationRequested(config$1) {
+		if (config$1.cancelToken) config$1.cancelToken.throwIfRequested();
+		if (config$1.signal && config$1.signal.aborted) throw new CanceledError$1();
+	}
+	/**
+	* Dispatch a request to the server using the configured adapter.
+	*
+	* @param {object} config The config that is to be used for the request
+	* @returns {Promise} The Promise to be fulfilled
+	*/
+	module.exports = function dispatchRequest$1(config$1) {
+		throwIfCancellationRequested(config$1);
+		config$1.headers = config$1.headers || {};
+		config$1.data = transformData.call(config$1, config$1.data, config$1.headers, config$1.transformRequest);
+		config$1.headers = utils$4.merge(config$1.headers.common || {}, config$1.headers[config$1.method] || {}, config$1.headers);
+		utils$4.forEach([
+			"delete",
+			"get",
+			"head",
+			"post",
+			"put",
+			"patch",
+			"common"
+		], function cleanHeaderConfig(method) {
+			delete config$1.headers[method];
+		});
+		var adapter = config$1.adapter || defaults$1.adapter;
+		return adapter(config$1).then(function onAdapterResolution(response) {
+			throwIfCancellationRequested(config$1);
+			response.data = transformData.call(config$1, response.data, response.headers, config$1.transformResponse);
+			return response;
+		}, function onAdapterRejection(reason) {
+			if (!isCancel(reason)) {
+				throwIfCancellationRequested(config$1);
+				if (reason && reason.response) reason.response.data = transformData.call(config$1, reason.response.data, reason.response.headers, config$1.transformResponse);
+			}
+			return Promise.reject(reason);
+		});
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/core/mergeConfig.js
+var require_mergeConfig = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/core/mergeConfig.js"(exports, module) {
+	var utils$3 = require_utils$11();
+	/**
+	* Config-specific merge-function which creates a new config-object
+	* by merging two configuration objects together.
+	*
+	* @param {Object} config1
+	* @param {Object} config2
+	* @returns {Object} New object resulting from merging config2 to config1
+	*/
+	module.exports = function mergeConfig$2(config1, config2) {
+		config2 = config2 || {};
+		var config$1 = {};
+		function getMergedValue(target, source) {
+			if (utils$3.isPlainObject(target) && utils$3.isPlainObject(source)) return utils$3.merge(target, source);
+			else if (utils$3.isPlainObject(source)) return utils$3.merge({}, source);
+			else if (utils$3.isArray(source)) return source.slice();
+			return source;
+		}
+		function mergeDeepProperties(prop) {
+			if (!utils$3.isUndefined(config2[prop])) return getMergedValue(config1[prop], config2[prop]);
+			else if (!utils$3.isUndefined(config1[prop])) return getMergedValue(void 0, config1[prop]);
+		}
+		function valueFromConfig2(prop) {
+			if (!utils$3.isUndefined(config2[prop])) return getMergedValue(void 0, config2[prop]);
+		}
+		function defaultToConfig2(prop) {
+			if (!utils$3.isUndefined(config2[prop])) return getMergedValue(void 0, config2[prop]);
+			else if (!utils$3.isUndefined(config1[prop])) return getMergedValue(void 0, config1[prop]);
+		}
+		function mergeDirectKeys(prop) {
+			if (prop in config2) return getMergedValue(config1[prop], config2[prop]);
+			else if (prop in config1) return getMergedValue(void 0, config1[prop]);
+		}
+		var mergeMap = {
+			"url": valueFromConfig2,
+			"method": valueFromConfig2,
+			"data": valueFromConfig2,
+			"baseURL": defaultToConfig2,
+			"transformRequest": defaultToConfig2,
+			"transformResponse": defaultToConfig2,
+			"paramsSerializer": defaultToConfig2,
+			"timeout": defaultToConfig2,
+			"timeoutMessage": defaultToConfig2,
+			"withCredentials": defaultToConfig2,
+			"adapter": defaultToConfig2,
+			"responseType": defaultToConfig2,
+			"xsrfCookieName": defaultToConfig2,
+			"xsrfHeaderName": defaultToConfig2,
+			"onUploadProgress": defaultToConfig2,
+			"onDownloadProgress": defaultToConfig2,
+			"decompress": defaultToConfig2,
+			"maxContentLength": defaultToConfig2,
+			"maxBodyLength": defaultToConfig2,
+			"beforeRedirect": defaultToConfig2,
+			"transport": defaultToConfig2,
+			"httpAgent": defaultToConfig2,
+			"httpsAgent": defaultToConfig2,
+			"cancelToken": defaultToConfig2,
+			"socketPath": defaultToConfig2,
+			"responseEncoding": defaultToConfig2,
+			"validateStatus": mergeDirectKeys
+		};
+		utils$3.forEach(Object.keys(config1).concat(Object.keys(config2)), function computeConfigValue(prop) {
+			var merge$2 = mergeMap[prop] || mergeDeepProperties;
+			var configValue = merge$2(prop);
+			utils$3.isUndefined(configValue) && merge$2 !== mergeDirectKeys || (config$1[prop] = configValue);
+		});
+		return config$1;
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/env/data.js
+var require_data = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/env/data.js"(exports, module) {
+	module.exports = { "version": "0.27.2" };
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/validator.js
+var require_validator = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/validator.js"(exports, module) {
+	var VERSION = require_data().version;
+	var AxiosError = require_AxiosError();
+	var validators$1 = {};
+	[
+		"object",
+		"boolean",
+		"number",
+		"function",
+		"string",
+		"symbol"
+	].forEach(function(type, i) {
+		validators$1[type] = function validator$1(thing) {
+			return typeof thing === type || "a" + (i < 1 ? "n " : " ") + type;
+		};
+	});
+	var deprecatedWarnings = {};
+	/**
+	* Transitional option validator
+	* @param {function|boolean?} validator - set to false if the transitional option has been removed
+	* @param {string?} version - deprecated version / removed since version
+	* @param {string?} message - some message with additional info
+	* @returns {function}
+	*/
+	validators$1.transitional = function transitional(validator$1, version$1, message) {
+		function formatMessage(opt, desc) {
+			return "[Axios v" + VERSION + "] Transitional option '" + opt + "'" + desc + (message ? ". " + message : "");
+		}
+		return function(value, opt, opts) {
+			if (validator$1 === false) throw new AxiosError(formatMessage(opt, " has been removed" + (version$1 ? " in " + version$1 : "")), AxiosError.ERR_DEPRECATED);
+			if (version$1 && !deprecatedWarnings[opt]) {
+				deprecatedWarnings[opt] = true;
+				console.warn(formatMessage(opt, " has been deprecated since v" + version$1 + " and will be removed in the near future"));
+			}
+			return validator$1 ? validator$1(value, opt, opts) : true;
+		};
+	};
+	/**
+	* Assert object's properties type
+	* @param {object} options
+	* @param {object} schema
+	* @param {boolean?} allowUnknown
+	*/
+	function assertOptions(options, schema, allowUnknown) {
+		if (typeof options !== "object") throw new AxiosError("options must be an object", AxiosError.ERR_BAD_OPTION_VALUE);
+		var keys = Object.keys(options);
+		var i = keys.length;
+		while (i-- > 0) {
+			var opt = keys[i];
+			var validator$1 = schema[opt];
+			if (validator$1) {
+				var value = options[opt];
+				var result = value === void 0 || validator$1(value, opt, options);
+				if (result !== true) throw new AxiosError("option " + opt + " must be " + result, AxiosError.ERR_BAD_OPTION_VALUE);
+				continue;
+			}
+			if (allowUnknown !== true) throw new AxiosError("Unknown option " + opt, AxiosError.ERR_BAD_OPTION);
+		}
+	}
+	module.exports = {
+		assertOptions,
+		validators: validators$1
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/core/Axios.js
+var require_Axios = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/core/Axios.js"(exports, module) {
+	var utils$2 = require_utils$11();
+	var buildURL$1 = require_buildURL();
+	var InterceptorManager = require_InterceptorManager();
+	var dispatchRequest = require_dispatchRequest();
+	var mergeConfig$1 = require_mergeConfig();
+	var buildFullPath$1 = require_buildFullPath();
+	var validator = require_validator();
+	var validators = validator.validators;
+	/**
+	* Create a new instance of Axios
+	*
+	* @param {Object} instanceConfig The default config for the instance
+	*/
+	function Axios$2(instanceConfig) {
+		this.defaults = instanceConfig;
+		this.interceptors = {
+			request: new InterceptorManager(),
+			response: new InterceptorManager()
+		};
+	}
+	/**
+	* Dispatch a request
+	*
+	* @param {Object} config The config specific for this request (merged with this.defaults)
+	*/
+	Axios$2.prototype.request = function request(configOrUrl, config$1) {
+		if (typeof configOrUrl === "string") {
+			config$1 = config$1 || {};
+			config$1.url = configOrUrl;
+		} else config$1 = configOrUrl || {};
+		config$1 = mergeConfig$1(this.defaults, config$1);
+		if (config$1.method) config$1.method = config$1.method.toLowerCase();
+		else if (this.defaults.method) config$1.method = this.defaults.method.toLowerCase();
+		else config$1.method = "get";
+		var transitional = config$1.transitional;
+		if (transitional !== void 0) validator.assertOptions(transitional, {
+			silentJSONParsing: validators.transitional(validators.boolean),
+			forcedJSONParsing: validators.transitional(validators.boolean),
+			clarifyTimeoutError: validators.transitional(validators.boolean)
+		}, false);
+		var requestInterceptorChain = [];
+		var synchronousRequestInterceptors = true;
+		this.interceptors.request.forEach(function unshiftRequestInterceptors(interceptor) {
+			if (typeof interceptor.runWhen === "function" && interceptor.runWhen(config$1) === false) return;
+			synchronousRequestInterceptors = synchronousRequestInterceptors && interceptor.synchronous;
+			requestInterceptorChain.unshift(interceptor.fulfilled, interceptor.rejected);
+		});
+		var responseInterceptorChain = [];
+		this.interceptors.response.forEach(function pushResponseInterceptors(interceptor) {
+			responseInterceptorChain.push(interceptor.fulfilled, interceptor.rejected);
+		});
+		var promise;
+		if (!synchronousRequestInterceptors) {
+			var chain$1 = [dispatchRequest, void 0];
+			Array.prototype.unshift.apply(chain$1, requestInterceptorChain);
+			chain$1 = chain$1.concat(responseInterceptorChain);
+			promise = Promise.resolve(config$1);
+			while (chain$1.length) promise = promise.then(chain$1.shift(), chain$1.shift());
+			return promise;
+		}
+		var newConfig = config$1;
+		while (requestInterceptorChain.length) {
+			var onFulfilled = requestInterceptorChain.shift();
+			var onRejected = requestInterceptorChain.shift();
+			try {
+				newConfig = onFulfilled(newConfig);
+			} catch (error) {
+				onRejected(error);
+				break;
+			}
+		}
+		try {
+			promise = dispatchRequest(newConfig);
+		} catch (error) {
+			return Promise.reject(error);
+		}
+		while (responseInterceptorChain.length) promise = promise.then(responseInterceptorChain.shift(), responseInterceptorChain.shift());
+		return promise;
+	};
+	Axios$2.prototype.getUri = function getUri(config$1) {
+		config$1 = mergeConfig$1(this.defaults, config$1);
+		var fullPath = buildFullPath$1(config$1.baseURL, config$1.url);
+		return buildURL$1(fullPath, config$1.params, config$1.paramsSerializer);
+	};
+	utils$2.forEach([
+		"delete",
+		"get",
+		"head",
+		"options"
+	], function forEachMethodNoData(method) {
+		Axios$2.prototype[method] = function(url, config$1) {
+			return this.request(mergeConfig$1(config$1 || {}, {
+				method,
+				url,
+				data: (config$1 || {}).data
+			}));
+		};
+	});
+	utils$2.forEach([
+		"post",
+		"put",
+		"patch"
+	], function forEachMethodWithData(method) {
+		function generateHTTPMethod(isForm) {
+			return function httpMethod(url, data, config$1) {
+				return this.request(mergeConfig$1(config$1 || {}, {
+					method,
+					headers: isForm ? { "Content-Type": "multipart/form-data" } : {},
+					url,
+					data
+				}));
+			};
+		}
+		Axios$2.prototype[method] = generateHTTPMethod();
+		Axios$2.prototype[method + "Form"] = generateHTTPMethod(true);
+	});
+	module.exports = Axios$2;
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/cancel/CancelToken.js
+var require_CancelToken = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/cancel/CancelToken.js"(exports, module) {
+	var CanceledError = require_CanceledError();
+	/**
+	* A `CancelToken` is an object that can be used to request cancellation of an operation.
+	*
+	* @class
+	* @param {Function} executor The executor function.
+	*/
+	function CancelToken(executor) {
+		if (typeof executor !== "function") throw new TypeError("executor must be a function.");
+		var resolvePromise;
+		this.promise = new Promise(function promiseExecutor(resolve) {
+			resolvePromise = resolve;
+		});
+		var token = this;
+		this.promise.then(function(cancel) {
+			if (!token._listeners) return;
+			var i;
+			var l = token._listeners.length;
+			for (i = 0; i < l; i++) token._listeners[i](cancel);
+			token._listeners = null;
+		});
+		this.promise.then = function(onfulfilled) {
+			var _resolve;
+			var promise = new Promise(function(resolve) {
+				token.subscribe(resolve);
+				_resolve = resolve;
+			}).then(onfulfilled);
+			promise.cancel = function reject() {
+				token.unsubscribe(_resolve);
+			};
+			return promise;
+		};
+		executor(function cancel(message) {
+			if (token.reason) return;
+			token.reason = new CanceledError(message);
+			resolvePromise(token.reason);
+		});
+	}
+	/**
+	* Throws a `CanceledError` if cancellation has been requested.
+	*/
+	CancelToken.prototype.throwIfRequested = function throwIfRequested() {
+		if (this.reason) throw this.reason;
+	};
+	/**
+	* Subscribe to the cancel signal
+	*/
+	CancelToken.prototype.subscribe = function subscribe(listener) {
+		if (this.reason) {
+			listener(this.reason);
+			return;
+		}
+		if (this._listeners) this._listeners.push(listener);
+		else this._listeners = [listener];
+	};
+	/**
+	* Unsubscribe from the cancel signal
+	*/
+	CancelToken.prototype.unsubscribe = function unsubscribe(listener) {
+		if (!this._listeners) return;
+		var index = this._listeners.indexOf(listener);
+		if (index !== -1) this._listeners.splice(index, 1);
+	};
+	/**
+	* Returns an object that contains a new `CancelToken` and a function that, when called,
+	* cancels the `CancelToken`.
+	*/
+	CancelToken.source = function source() {
+		var cancel;
+		var token = new CancelToken(function executor(c) {
+			cancel = c;
+		});
+		return {
+			token,
+			cancel
+		};
+	};
+	module.exports = CancelToken;
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/spread.js
+var require_spread = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/spread.js"(exports, module) {
+	/**
+	* Syntactic sugar for invoking a function and expanding an array for arguments.
+	*
+	* Common use case would be to use `Function.prototype.apply`.
+	*
+	*  ```js
+	*  function f(x, y, z) {}
+	*  var args = [1, 2, 3];
+	*  f.apply(null, args);
+	*  ```
+	*
+	* With `spread` this example can be re-written.
+	*
+	*  ```js
+	*  spread(function(x, y, z) {})([1, 2, 3]);
+	*  ```
+	*
+	* @param {Function} callback
+	* @returns {Function}
+	*/
+	module.exports = function spread(callback) {
+		return function wrap(arr) {
+			return callback.apply(null, arr);
+		};
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/isAxiosError.js
+var require_isAxiosError = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/helpers/isAxiosError.js"(exports, module) {
+	var utils$1 = require_utils$11();
+	/**
+	* Determines whether the payload is an error thrown by Axios
+	*
+	* @param {*} payload The value to test
+	* @returns {boolean} True if the payload is an error thrown by Axios, otherwise false
+	*/
+	module.exports = function isAxiosError(payload) {
+		return utils$1.isObject(payload) && payload.isAxiosError === true;
+	};
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/axios.js
+var require_axios$1 = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/lib/axios.js"(exports, module) {
+	var utils = require_utils$11();
+	var bind = require_bind();
+	var Axios$1 = require_Axios();
+	var mergeConfig = require_mergeConfig();
+	var defaults = require_defaults();
+	/**
+	* Create an instance of Axios
+	*
+	* @param {Object} defaultConfig The default config for the instance
+	* @return {Axios} A new instance of Axios
+	*/
+	function createInstance(defaultConfig) {
+		var context = new Axios$1(defaultConfig);
+		var instance = bind(Axios$1.prototype.request, context);
+		utils.extend(instance, Axios$1.prototype, context);
+		utils.extend(instance, context);
+		instance.create = function create(instanceConfig) {
+			return createInstance(mergeConfig(defaultConfig, instanceConfig));
+		};
+		return instance;
+	}
+	var axios$1 = createInstance(defaults);
+	axios$1.Axios = Axios$1;
+	axios$1.CanceledError = require_CanceledError();
+	axios$1.CancelToken = require_CancelToken();
+	axios$1.isCancel = require_isCancel();
+	axios$1.VERSION = require_data().version;
+	axios$1.toFormData = require_toFormData();
+	axios$1.AxiosError = require_AxiosError();
+	axios$1.Cancel = axios$1.CanceledError;
+	axios$1.all = function all(promises) {
+		return Promise.all(promises);
+	};
+	axios$1.spread = require_spread();
+	axios$1.isAxiosError = require_isAxiosError();
+	module.exports = axios$1;
+	module.exports.default = axios$1;
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/index.js
+var require_axios = __commonJS({ "../../node_modules/.pnpm/axios@0.27.2/node_modules/axios/index.js"(exports, module) {
+	module.exports = require_axios$1();
+} });
+
+//#endregion
+//#region ../../node_modules/.pnpm/@vespaiach+axios-fetch-adapter@0.3.1_axios@0.27.2/node_modules/@vespaiach/axios-fetch-adapter/index.js
+var import_axios$1 = __toESM(require_axios());
+var import_settle = __toESM(require_settle());
+var import_buildURL = __toESM(require_buildURL());
+var import_buildFullPath = __toESM(require_buildFullPath());
+var import_utils = __toESM(require_utils$11());
+/**
+
+* - Create a request object
+
+* - Get response body
+
+* - Check if timeout
+
+*/
+async function fetchAdapter(config$1) {
+	const request = createRequest(config$1);
+	const promiseChain = [getResponse(request, config$1)];
+	if (config$1.timeout && config$1.timeout > 0) promiseChain.push(new Promise((res) => {
+		setTimeout(() => {
+			const message = config$1.timeoutErrorMessage ? config$1.timeoutErrorMessage : "timeout of " + config$1.timeout + "ms exceeded";
+			res(createError(message, config$1, "ECONNABORTED", request));
+		}, config$1.timeout);
+	}));
+	const data = await Promise.race(promiseChain);
+	return new Promise((resolve, reject) => {
+		if (data instanceof Error) reject(data);
+		else Object.prototype.toString.call(config$1.settle) === "[object Function]" ? config$1.settle(resolve, reject, data) : (0, import_settle.default)(resolve, reject, data);
+	});
+}
+/**
+
+* Fetch API stage two is to get response body. This funtion tries to retrieve
+
+* response body based on response's type
+
+*/
+async function getResponse(request, config$1) {
+	let stageOne;
+	try {
+		stageOne = await fetch(request);
+	} catch (e) {
+		return createError("Network Error", config$1, "ERR_NETWORK", request);
+	}
+	const response = {
+		ok: stageOne.ok,
+		status: stageOne.status,
+		statusText: stageOne.statusText,
+		headers: new Headers(stageOne.headers),
+		config: config$1,
+		request
+	};
+	if (stageOne.status >= 200 && stageOne.status !== 204) switch (config$1.responseType) {
+		case "arraybuffer":
+			response.data = await stageOne.arrayBuffer();
+			break;
+		case "blob":
+			response.data = await stageOne.blob();
+			break;
+		case "json":
+			response.data = await stageOne.json();
+			break;
+		case "formData":
+			response.data = await stageOne.formData();
+			break;
+		default:
+			response.data = await stageOne.text();
+			break;
+	}
+	return response;
+}
+/**
+
+* This function will create a Request object based on configuration's axios
+
+*/
+function createRequest(config$1) {
+	const headers = new Headers(config$1.headers);
+	if (config$1.auth) {
+		const username = config$1.auth.username || "";
+		const password = config$1.auth.password ? decodeURI(encodeURIComponent(config$1.auth.password)) : "";
+		headers.set("Authorization", `Basic ${btoa(username + ":" + password)}`);
+	}
+	const method = config$1.method.toUpperCase();
+	const options = {
+		headers,
+		method
+	};
+	if (method !== "GET" && method !== "HEAD") {
+		options.body = config$1.data;
+		if ((0, import_utils.isFormData)(options.body) && (0, import_utils.isStandardBrowserEnv)()) headers.delete("Content-Type");
+	}
+	if (config$1.mode) options.mode = config$1.mode;
+	if (config$1.cache) options.cache = config$1.cache;
+	if (config$1.integrity) options.integrity = config$1.integrity;
+	if (config$1.redirect) options.redirect = config$1.redirect;
+	if (config$1.referrer) options.referrer = config$1.referrer;
+	if (!(0, import_utils.isUndefined)(config$1.withCredentials)) options.credentials = config$1.withCredentials ? "include" : "omit";
+	const fullPath = (0, import_buildFullPath.default)(config$1.baseURL, config$1.url);
+	const url = (0, import_buildURL.default)(fullPath, config$1.params, config$1.paramsSerializer);
+	return new Request(url, options);
+}
+/**
+
+* Note:
+
+* 
+
+*   From version >= 0.27.0, createError function is replaced by AxiosError class.
+
+*   So I copy the old createError function here for backward compatible.
+
+* 
+
+* 
+
+* 
+
+* Create an Error with the specified message, config, error code, request and response.
+
+*
+
+* @param {string} message The error message.
+
+* @param {Object} config The config.
+
+* @param {string} [code] The error code (for example, 'ECONNABORTED').
+
+* @param {Object} [request] The request.
+
+* @param {Object} [response] The response.
+
+* @returns {Error} The created error.
+
+*/
+function createError(message, config$1, code, request, response) {
+	if (import_axios$1.default.AxiosError && typeof import_axios$1.default.AxiosError === "function") return new import_axios$1.default.AxiosError(message, import_axios$1.default.AxiosError[code], config$1, request, response);
+	var error = new Error(message);
+	return enhanceError(error, config$1, code, request, response);
+}
+/**
+
+* 
+
+* Note:
+
+* 
+
+*   This function is for backward compatible.
+
+* 
+
+*  
+
+* Update an Error with the specified config, error code, and response.
+
+*
+
+* @param {Error} error The error to update.
+
+* @param {Object} config The config.
+
+* @param {string} [code] The error code (for example, 'ECONNABORTED').
+
+* @param {Object} [request] The request.
+
+* @param {Object} [response] The response.
+
+* @returns {Error} The error.
+
+*/
+function enhanceError(error, config$1, code, request, response) {
+	error.config = config$1;
+	if (code) error.code = code;
+	error.request = request;
+	error.response = response;
+	error.isAxiosError = true;
+	error.toJSON = function toJSON() {
+		return {
+			message: this.message,
+			name: this.name,
+			description: this.description,
+			number: this.number,
+			fileName: this.fileName,
+			lineNumber: this.lineNumber,
+			columnNumber: this.columnNumber,
+			stack: this.stack,
+			config: this.config,
+			code: this.code,
+			status: this.response && this.response.status ? this.response.status : null
+		};
+	};
+	return error;
 }
 
 //#endregion
@@ -4292,12 +5554,10 @@ function invariant(condition, message) {
 
 //#endregion
 //#region ../@core/src/kwil-infra/create-kwil-client.ts
+var import_axios = __toESM(require_axios(), 1);
 /**
-
 * A client for interacting with kwil with type-safe abstractions for `call` and `execute`.
-
 * Has utility methods for creating actions and setting a signer.
-
 */
 var KwilActionClient = class {
 	signer;
@@ -4319,9 +5579,7 @@ var KwilActionClient = class {
 		return args.map((arg) => arg.type);
 	}
 	/**
-	
 	* Calls an action on the kwil nodes. This similar to `GET` like request.
-	
 	*/
 	async call(params, signer = this.signer) {
 		const action = {
@@ -4334,9 +5592,7 @@ var KwilActionClient = class {
 		return response?.data?.result;
 	}
 	/**
-	
 	* Executes an action on the kwil nodes. This similar to `POST` like request.
-	
 	*/
 	async execute(params, signer = this.signer, synchronous = true) {
 		invariant(signer, "Signer is not set, you must set it before executing an action");
@@ -4367,18 +5623,40 @@ const createKwilClient = (Cls) => async ({ nodeUrl: kwilProvider, chainId }) => 
 		chainId,
 		timeout: DEFAULT_TIMEOUT
 	}));
+	if (typeof chrome !== "undefined" && chrome.runtime?.id) {
+		console.warn("🔑 chrome extension detected, patching kwil client");
+		client.client.request = function() {
+			const headers = {};
+			if (this.cookie) headers.Cookie = this.cookie;
+			const instance = import_axios.default.create({
+				baseURL: this.config.kwilProvider,
+				timeout: this.config.timeout,
+				maxContentLength: 1024 * 1024 * 512,
+				withCredentials: true,
+				adapter: fetchAdapter,
+				headers
+			});
+			if (this.config.logging) {
+				instance.interceptors.request.use((request) => {
+					this.config.logger(`Requesting: ${request.baseURL}${request.url}`);
+					return request;
+				});
+				instance.interceptors.response.use((response) => {
+					this.config.logger(`Response:   ${response.config.url} - ${response.status}`);
+					return response;
+				});
+			}
+			return instance;
+		};
+	}
 	return client;
 };
 /**
-
 * Create a kwil client for node.js environment
-
 */
 const createNodeKwilClient = createKwilClient(NodeKwil);
 /**
-
 * Create a kwil client for browser environment
-
 */
 const createWebKwilClient = createKwilClient(WebKwil);
 
@@ -4615,9 +5893,9 @@ var require_utils$10 = __commonJS({ "../../node_modules/.pnpm/@noble+hashes@1.8.
 		}
 		return res;
 	}
-	function checkOpts(defaults, opts) {
+	function checkOpts(defaults$4, opts) {
 		if (opts !== void 0 && {}.toString.call(opts) !== "[object Object]") throw new Error("options should be object or undefined");
-		const merged = Object.assign(defaults, opts);
+		const merged = Object.assign(defaults$4, opts);
 		return merged;
 	}
 	/** For runtime check if class implements interface */
@@ -4749,10 +6027,10 @@ var require_lib$1 = __commonJS({ "../../node_modules/.pnpm/@scure+base@1.2.6/nod
 		if (!isBytes(b)) throw new Error("Uint8Array expected");
 		if (lengths.length > 0 && !lengths.includes(b.length)) throw new Error("Uint8Array expected of length " + lengths + ", got length=" + b.length);
 	}
-	function isArrayOf(isString$1, arr) {
+	function isArrayOf(isString$2, arr) {
 		if (!Array.isArray(arr)) return false;
 		if (arr.length === 0) return true;
-		if (isString$1) return arr.every((item) => typeof item === "string");
+		if (isString$2) return arr.every((item) => typeof item === "string");
 		else return arr.every((item) => Number.isSafeInteger(item));
 	}
 	function afn(input) {
@@ -4781,10 +6059,10 @@ var require_lib$1 = __commonJS({ "../../node_modules/.pnpm/@scure+base@1.2.6/nod
 	function chain(...args) {
 		const id = (a) => a;
 		const wrap = (a, b) => (c) => a(b(c));
-		const encode$2 = args.map((x) => x.encode).reduceRight(wrap, id);
+		const encode$3 = args.map((x) => x.encode).reduceRight(wrap, id);
 		const decode$3 = args.map((x) => x.decode).reduce(wrap, id);
 		return {
-			encode: encode$2,
+			encode: encode$3,
 			decode: decode$3
 		};
 	}
@@ -5277,7 +6555,7 @@ var require_lib$1 = __commonJS({ "../../node_modules/.pnpm/@scure+base@1.2.6/nod
 		const fromWords = _words.decode;
 		const toWords = _words.encode;
 		const fromWordsUnsafe = unsafeWrapper(fromWords);
-		function encode$2(prefix$2, words, limit = 90) {
+		function encode$3(prefix$2, words, limit = 90) {
 			astr("bech32.encode prefix", prefix$2);
 			if (isBytes(words)) words = Array.from(words);
 			anumArr("bech32.encode", words);
@@ -5318,10 +6596,10 @@ var require_lib$1 = __commonJS({ "../../node_modules/.pnpm/@scure+base@1.2.6/nod
 			};
 		}
 		function encodeFromBytes(prefix$2, bytes$1) {
-			return encode$2(prefix$2, toWords(bytes$1));
+			return encode$3(prefix$2, toWords(bytes$1));
 		}
 		return {
-			encode: encode$2,
+			encode: encode$3,
 			decode: decode$3,
 			encodeFromBytes,
 			decodeToBytes,
@@ -7473,7 +8751,7 @@ var require_utils$8 = __commonJS({ "../../node_modules/.pnpm/@noble+curves@1.9.2
 		field: (val, object$1) => object$1.Fp.isValid(val),
 		hash: (val) => typeof val === "function" && Number.isSafeInteger(val.outputLen)
 	};
-	function validateObject(object$1, validators, optValidators = {}) {
+	function validateObject(object$1, validators$2, optValidators = {}) {
 		const checkField = (fieldName, type, isOptional) => {
 			const checkVal = validatorFns[type];
 			if (typeof checkVal !== "function") throw new Error("invalid validator function");
@@ -7481,7 +8759,7 @@ var require_utils$8 = __commonJS({ "../../node_modules/.pnpm/@noble+curves@1.9.2
 			if (isOptional && val === void 0) return;
 			if (!checkVal(val, object$1)) throw new Error("param " + String(fieldName) + " is invalid. Expected " + type + ", got " + val);
 		};
-		for (const [fieldName, type] of Object.entries(validators)) checkField(fieldName, type, false);
+		for (const [fieldName, type] of Object.entries(validators$2)) checkField(fieldName, type, false);
 		for (const [fieldName, type] of Object.entries(optValidators)) checkField(fieldName, type, true);
 		return object$1;
 	}
@@ -9014,7 +10292,7 @@ var require_weierstrass = __commonJS({ "../../node_modules/.pnpm/@noble+curves@1
 			}
 		}
 		const normPrivateKeyToScalar = _legacyHelperNormPriv(Fn, curveOpts.allowedPrivateKeyLengths, curveOpts.wrapPrivateKey);
-		const utils = {
+		const utils$17 = {
 			isValidPrivateKey(privateKey) {
 				try {
 					normPrivateKeyToScalar(privateKey);
@@ -9217,7 +10495,7 @@ var require_weierstrass = __commonJS({ "../../node_modules/.pnpm/@noble+curves@1
 			getSharedSecret,
 			sign: sign$1,
 			verify: verify$1,
-			utils,
+			utils: utils$17,
 			Point: Point$2,
 			Signature
 		});
@@ -9578,7 +10856,7 @@ var require_hash_to_curve = __commonJS({ "../../node_modules/.pnpm/@noble+curves
 		};
 	}
 	/** Creates hash-to-curve methods from EC Point and mapToCurve function. See {@link H2CHasher}. */
-	function createHasher(Point$2, mapToCurve, defaults) {
+	function createHasher(Point$2, mapToCurve, defaults$4) {
 		if (typeof mapToCurve !== "function") throw new Error("mapToCurve() must be defined");
 		function map(num$1) {
 			return Point$2.fromAffine(mapToCurve(num$1));
@@ -9590,18 +10868,18 @@ var require_hash_to_curve = __commonJS({ "../../node_modules/.pnpm/@noble+curves
 			return P;
 		}
 		return {
-			defaults,
+			defaults: defaults$4,
 			hashToCurve(msg, options) {
-				const dst = defaults.DST ? defaults.DST : {};
-				const opts = Object.assign({}, defaults, dst, options);
+				const dst = defaults$4.DST ? defaults$4.DST : {};
+				const opts = Object.assign({}, defaults$4, dst, options);
 				const u = hash_to_field(msg, 2, opts);
 				const u0 = map(u[0]);
 				const u1 = map(u[1]);
 				return clear(u0.add(u1));
 			},
 			encodeToCurve(msg, options) {
-				const dst = defaults.encodeDST ? defaults.encodeDST : {};
-				const opts = Object.assign({}, defaults, dst, options);
+				const dst = defaults$4.encodeDST ? defaults$4.encodeDST : {};
+				const opts = Object.assign({}, defaults$4, dst, options);
 				const u = hash_to_field(msg, 1, opts);
 				return clear(map(u[0]));
 			},
@@ -10577,7 +11855,7 @@ var require_edwards = __commonJS({ "../../node_modules/.pnpm/@noble+curves@1.9.2
 			return RkA.subtract(SB).clearCofactor().is0();
 		}
 		G.precompute(8);
-		const utils = {
+		const utils$17 = {
 			getExtendedPublicKey,
 			randomPrivateKey: () => randomBytes_(Fp$1.BYTES),
 			precompute(windowSize = 8, point = Point$2.BASE) {
@@ -10588,7 +11866,7 @@ var require_edwards = __commonJS({ "../../node_modules/.pnpm/@noble+curves@1.9.2
 			getPublicKey,
 			sign: sign$1,
 			verify: verify$1,
-			utils,
+			utils: utils$17,
 			Point: Point$2
 		};
 	}
@@ -13728,9 +15006,7 @@ var KwilNonce = class {
 	}
 };
 /**
-
 * Creates a signer function that can be used to sign messages with a NEAR wallet
-
 */
 function createNearWalletSigner(wallet, recipient) {
 	return async (message) => {
@@ -13760,8 +15036,7 @@ function createNearWalletSigner(wallet, recipient) {
 			callbackUrl
 		};
 		const nep413BorshPayload = borshSerialize(nep413BorschSchema, nep413BorshParams);
-		const result = bytesConcat(binaryWriteUint16BE(nep413BorshPayload.length), nep413BorshPayload, base64Decode(signature));
-		return result;
+		return bytesConcat(binaryWriteUint16BE(nep413BorshPayload.length), nep413BorshPayload, base64Decode(signature));
 	};
 }
 function implicitAddressFromPublicKey(publicKey) {
@@ -13828,10 +15103,7 @@ async function createNearWalletKwilSigner(wallet, currentAddress, store, kwilCli
 		await store.set("signer-public-key", publicKey);
 	}
 	const signer = createNearWalletSigner(wallet, recipient);
-	return {
-		kwilSigner: new KwilSigner(signer, implicitAddressFromPublicKey(publicKey), "nep413"),
-		publicKey
-	};
+	return new KwilSigner(signer, implicitAddressFromPublicKey(publicKey), "nep413");
 }
 
 //#endregion
@@ -19243,7 +20515,7 @@ var require_blob = __commonJS({ "../../node_modules/.pnpm/ripple-binary-codec@2.
 	/**
 	* Variable length encoded type
 	*/
-	var Blob = class Blob extends serialized_type_1$8.SerializedType {
+	var Blob$1 = class Blob$1 extends serialized_type_1$8.SerializedType {
 		constructor(bytes$1) {
 			super(bytes$1);
 		}
@@ -19255,7 +20527,7 @@ var require_blob = __commonJS({ "../../node_modules/.pnpm/ripple-binary-codec@2.
 		* @returns A Blob object
 		*/
 		static fromParser(parser, hint) {
-			return new Blob(parser.read(hint));
+			return new Blob$1(parser.read(hint));
 		}
 		/**
 		* Create a Blob object from a hex-string
@@ -19264,15 +20536,15 @@ var require_blob = __commonJS({ "../../node_modules/.pnpm/ripple-binary-codec@2.
 		* @returns A Blob object
 		*/
 		static from(value) {
-			if (value instanceof Blob) return value;
+			if (value instanceof Blob$1) return value;
 			if (typeof value === "string") {
 				if (!/^[A-F0-9]*$/iu.test(value)) throw new Error("Cannot construct Blob from a non-hex string");
-				return new Blob((0, utils_1$44.hexToBytes)(value));
+				return new Blob$1((0, utils_1$44.hexToBytes)(value));
 			}
 			throw new Error("Cannot construct Blob from value given");
 		}
 	};
-	exports.Blob = Blob;
+	exports.Blob = Blob$1;
 } });
 
 //#endregion
@@ -23818,11 +25090,11 @@ var require_autofill = __commonJS({ "../../node_modules/.pnpm/xrpl@4.3.0_bufferu
 		function verb(n) {
 			i[n] = o[n] && function(v) {
 				return new Promise(function(resolve, reject) {
-					v = o[n](v), settle(resolve, reject, v.done, v.value);
+					v = o[n](v), settle$2(resolve, reject, v.done, v.value);
 				});
 			};
 		}
-		function settle(resolve, reject, d, v) {
+		function settle$2(resolve, reject, d, v) {
 			Promise.resolve(v).then(function(v$1) {
 				resolve({
 					value: v$1,
@@ -32116,43 +33388,18 @@ async function createClientKwilSigner(store, kwilClient, wallet) {
 				console.log("error logoutKGW", error);
 			}
 		}
-		return [
-			new KwilSigner(wallet, currentAddress),
-			currentAddress,
-			void 0,
-			"evm"
-		];
+		return [new KwilSigner(wallet, currentAddress), currentAddress];
 	}
 	if (looksLikeNearWallet(wallet)) {
-		const accounts = await wallet.getAccounts();
-		const { kwilSigner, publicKey } = await createNearWalletKwilSigner(wallet, accounts[0].accountId, store, kwilClient);
-		return [
-			kwilSigner,
-			accounts[0].accountId,
-			publicKey,
-			"near"
-		];
+		const accountId = (await wallet.getAccounts())[0].accountId;
+		return [await createNearWalletKwilSigner(wallet, accountId, store, kwilClient), accountId];
 	}
 	if (looksLikeXrpWallet(wallet)) {
 		const { address: currentAddress, publicKey: walletPublicKey } = await getXrpPublicKey(wallet);
 		if (!currentAddress) throw new Error("Failed to get XRP address");
-		console.log({
-			currentAddress,
-			walletPublicKey
-		});
-		return [
-			await createXrpKwilSigner(wallet, currentAddress, store, kwilClient, walletPublicKey),
-			currentAddress,
-			walletPublicKey,
-			"xrpl"
-		];
+		return [await createXrpKwilSigner(wallet, currentAddress, store, kwilClient, walletPublicKey), currentAddress];
 	}
-	if ("signatureType" in wallet && "publicAddress" in wallet) return [
-		wallet,
-		wallet.publicAddress,
-		wallet.publicKey,
-		"stellar"
-	];
+	if ("signatureType" in wallet && "publicAddress" in wallet) return [wallet, wallet.publicAddress];
 	return ((_) => {
 		throw new Error("Invalid `signer` type");
 	})(wallet);
@@ -32161,17 +33408,6 @@ async function createClientKwilSigner(store, kwilClient, wallet) {
 //#endregion
 //#region ../@core/src/utils/index.ts
 var import_nacl_fast = __toESM(require_nacl_fast(), 1);
-const getWalletType = (address) => {
-	const evm_regexp = /^0x[0-9a-fA-F]{40}$/;
-	const near_regexp = /^[a-zA-Z0-9._-]+\.(near|testnet|betanet)$/;
-	const xrp_address_regexp = /^r[0-9a-zA-Z]{24,34}$/;
-	const stellar_regexp = /^G[A-Z0-9]{55}$/;
-	if (evm_regexp.test(address)) return "evm";
-	if (near_regexp.test(address)) return "near";
-	if (xrp_address_regexp.test(address)) return "xrpl";
-	if (stellar_regexp.test(address)) return "stellar";
-	throw new Error("Unsupported wallet address");
-};
 async function buildInsertableIDOSCredential(userId, publicNotes, content, recipientEncryptionPublicKey, encryptorPublicKey) {
 	invariant(recipientEncryptionPublicKey, "Missing `recipientEncryptionPublicKey`");
 	invariant(encryptorPublicKey, "Missing `encryptorPublicKey`");
@@ -32194,7 +33430,6 @@ var IframeEnclave = class extends BaseProvider {
 	container;
 	iframe;
 	hostUrl;
-	bound = false;
 	constructor(options) {
 		super(options);
 		if (!this.options.container) throw new Error("container is required");
@@ -32263,18 +33498,6 @@ var IframeEnclave = class extends BaseProvider {
 			this.hideEnclave();
 		}
 	}
-	async addAddressMessageToSign(address, publicKey, addressToAddType) {
-		return this.requestToEnclave("addAddressMessageToSign", address, publicKey, addressToAddType);
-	}
-	async removeAddressMessageToSign(address, publicKey, addressToRemoveType) {
-		return this.requestToEnclave("removeAddressMessageToSign", address, publicKey, addressToRemoveType);
-	}
-	async addAddressToMpcSecret(userId, message, signature) {
-		return this.requestToEnclave("addAddressToMpcSecret", userId, message, signature);
-	}
-	async removeAddressFromMpcSecret(userId, message, signature) {
-		return this.requestToEnclave("removeAddressFromMpcSecret", userId, message, signature);
-	}
 	async createAndLoadIframe() {
 		const container = document.querySelector(this.container);
 		if (!container) throw new Error(`Can't find container with selector ${this.container}`);
@@ -32330,11 +33553,9 @@ var IframeEnclave = class extends BaseProvider {
 		});
 	}
 	bindMessageListener() {
-		if (!this.bound) window.addEventListener("message", this.onMessage.bind(this));
-		this.bound = true;
+		window.addEventListener("message", this.onMessage.bind(this));
 	}
 	async onMessage(message) {
-		if (!message || !message.data || typeof message.data !== "object") return;
 		if (message.data.type !== "idOS:signTypedData" || message.origin !== this.hostUrl.origin) return;
 		const payload = message.data.payload;
 		const signature = await this.signTypedData(payload.domain, payload.types, payload.value);
@@ -32389,21 +33610,10 @@ var idOSClientIdle = class idOSClientIdle {
 	async addressHasProfile(address) {
 		return hasProfile(this.kwilClient, { address }).then((res) => res.has_profile);
 	}
-	async withUserSigner(_signer) {
-		let signer = _signer;
-		const [kwilSigner, walletIdentifier, walletPublicKey, walletType] = await createClientKwilSigner(this.store, this.kwilClient, signer);
-		console.log("Wallet Type:", walletType);
-		console.log("Wallet Identifier:", walletIdentifier);
-		console.log("Wallet Public Key:", walletPublicKey);
+	async withUserSigner(signer) {
+		const [kwilSigner, walletIdentifier] = await createClientKwilSigner(this.store, this.kwilClient, signer);
 		this.kwilClient.setSigner(kwilSigner);
-		if (walletType === "near") {
-			const originalSigner = signer;
-			signer = { signMessage: async (message) => {
-				const signature = await signNearMessage(originalSigner, message);
-				return { signedMessage: signature };
-			} };
-		}
-		return new idOSClientWithUserSigner(this, signer, kwilSigner, walletIdentifier, walletPublicKey, walletType);
+		return new idOSClientWithUserSigner(this, signer, kwilSigner, walletIdentifier);
 	}
 	async logOut() {
 		return this;
@@ -32417,9 +33627,7 @@ var idOSClientWithUserSigner = class {
 	signer;
 	kwilSigner;
 	walletIdentifier;
-	walletPublicKey;
-	walletType;
-	constructor(idOSClientIdle$1, signer, kwilSigner, walletIdentifier, walletPublicKey, walletType) {
+	constructor(idOSClientIdle$1, signer, kwilSigner, walletIdentifier) {
 		this.state = "with-user-signer";
 		this.store = idOSClientIdle$1.store;
 		this.kwilClient = idOSClientIdle$1.kwilClient;
@@ -32427,8 +33635,6 @@ var idOSClientWithUserSigner = class {
 		this.signer = signer;
 		this.kwilSigner = kwilSigner;
 		this.walletIdentifier = walletIdentifier;
-		this.walletPublicKey = walletPublicKey;
-		this.walletType = walletType;
 		this.enclaveProvider.setSigner(this.signer);
 	}
 	async logOut() {
@@ -32443,8 +33649,6 @@ var idOSClientWithUserSigner = class {
 			mode: "new",
 			userId,
 			walletAddress: this.walletIdentifier,
-			walletPublicKey: this.walletPublicKey,
-			walletType: this.walletType,
 			encryptionPasswordStore: void 0,
 			expectedUserEncryptionPublicKey: void 0
 		});
@@ -32458,7 +33662,6 @@ var idOSClientWithUserSigner = class {
 			userId: kwilUser.id,
 			expectedUserEncryptionPublicKey: kwilUser.recipient_encryption_public_key,
 			walletAddress: this.walletIdentifier,
-			walletType: this.walletType,
 			encryptionPasswordStore: kwilUser.encryption_password_store
 		});
 		return new idOSClientLoggedIn(this, kwilUser);
@@ -32472,8 +33675,6 @@ var idOSClientLoggedIn = class {
 	signer;
 	kwilSigner;
 	walletIdentifier;
-	walletPublicKey;
-	walletType;
 	user;
 	constructor(idOSClientWithUserSigner$1, user) {
 		this.state = "logged-in";
@@ -32483,8 +33684,6 @@ var idOSClientLoggedIn = class {
 		this.signer = idOSClientWithUserSigner$1.signer;
 		this.kwilSigner = idOSClientWithUserSigner$1.kwilSigner;
 		this.walletIdentifier = idOSClientWithUserSigner$1.walletIdentifier;
-		this.walletPublicKey = idOSClientWithUserSigner$1.walletPublicKey;
-		this.walletType = idOSClientWithUserSigner$1.walletType;
 		this.user = user;
 	}
 	async logOut() {
@@ -32566,10 +33765,10 @@ var idOSClientLoggedIn = class {
 		return params;
 	}
 	async getGrantsCount() {
-		return getAccessGrantsGrantedCount(this.kwilClient, { user_id: null }).then((res) => res.count);
+		return getGrantsCount(this.kwilClient, { user_id: null }).then((res) => res.count);
 	}
-	async getCredentialShared(id) {
-		return getCredentialShared(this.kwilClient, { id }).then((res) => res[0]);
+	async getSharedCredential(id) {
+		return getSharedCredential(this.kwilClient, { id }).then((res) => res[0]);
 	}
 	async revokeAccessGrant(id) {
 		await revokeAccessGrant(this.kwilClient, { id });
@@ -32577,40 +33776,17 @@ var idOSClientLoggedIn = class {
 	}
 	async addWallet(params) {
 		await addWallet(this.kwilClient, params);
-		if (this.user.encryption_password_store !== "mpc") {
-			console.log("MPC is not enabled or the user is not using MPC");
-			return params;
-		}
-		if (!params.wallet_type || params.wallet_type === "unknown") params.wallet_type = getWalletType(params.address);
-		console.log({ params });
-		console.log(this.signer);
-		const messageToSign = await this.enclaveProvider.addAddressMessageToSign(params.address, params.public_key, params.wallet_type);
-		const signature = await this.enclaveProvider.signTypedData(messageToSign.domain, messageToSign.types, messageToSign.value);
-		const result = await this.enclaveProvider.addAddressToMpcSecret(this.user.id, messageToSign.value, signature);
-		if (result !== "success") console.error(`Failed to add wallet to MPC: ${result}`);
 		return params;
 	}
 	async getWallets() {
 		return getWallets(this.kwilClient);
 	}
 	async removeWallet(id) {
-		const wallets = await this.getWallets();
-		const wallet = wallets.find((wallet$1) => wallet$1.id === id);
-		if (!wallet) throw new Error(`Wallet with id ${id} not found`);
 		await removeWallet(this.kwilClient, { id });
-		if (this.user.encryption_password_store !== "mpc") {
-			console.log("MPC is not enabled or the user is not using MPC");
-			return { id };
-		}
-		console.log({ wallet });
-		const messageToSign = await this.enclaveProvider.removeAddressMessageToSign(wallet.address, wallet.public_key, wallet.wallet_type);
-		const signature = await this.enclaveProvider.signTypedData(messageToSign.domain, messageToSign.types, messageToSign.value);
-		const result = await this.enclaveProvider.removeAddressFromMpcSecret(wallet.user_id, messageToSign.value, signature);
-		if (result !== "success") console.error(`Failed to add wallet to MPC: ${result}`);
 		return { id };
 	}
 	async removeWallets(ids) {
-		for (const id of ids) await this.removeWallet(id);
+		await removeWallets(this.kwilClient, ids);
 		return ids;
 	}
 	async filterCredentials(requirements) {
@@ -32630,6 +33806,8 @@ var idOSClientLoggedIn = class {
 			}
 			return matchCriteria(publicNotes, publicNotesFieldFilters.pick) && negate(() => matchCriteria(publicNotes, publicNotesFieldFilters.omit));
 		});
+		const privateFieldFilters = requirements.privateFieldFilters;
+		if (privateFieldFilters) result = await this.enclaveProvider.filterCredentials(result, privateFieldFilters);
 		return result;
 	}
 	async requestAccessGrant(credentialId, { consumerEncryptionPublicKey, consumerAuthPublicKey }) {

@@ -14,11 +14,11 @@ import * as z from "zod";
 type idOSCredential = {
   id: string;
   user_id: string;
+  issuer_auth_public_key: string;
+  original_id?: string;
   public_notes: string;
   content: string;
   encryptor_public_key: string;
-  issuer_auth_public_key: string;
-  original_id?: string | null;
 };
 // https://github.com/colinhacks/zod/issues/3751
 declare const CredentialResidentialAddressSchema: z$1.ZodObject<{
@@ -29,9 +29,6 @@ declare const CredentialResidentialAddressSchema: z$1.ZodObject<{
   city: z$1.ZodString;
   postalCode: z$1.ZodString;
   country: z$1.ZodString;
-  proofCategory: z$1.ZodString;
-  proofDateOfIssue: z$1.ZodOptional<z$1.ZodDate>;
-  proofFile: z$1.ZodType<Buffer<ArrayBufferLike>>;
 }>;
 declare const IDDocumentTypeSchema: z$1.ZodEnum<{
   PASSPORT: "PASSPORT";
@@ -71,6 +68,9 @@ declare const CredentialSubjectSchema: z$1.ZodObject<{
   idDocumentBackFile: z$1.ZodOptional<z$1.ZodType<Buffer<ArrayBufferLike>>>;
   selfieFile: z$1.ZodType<Buffer<ArrayBufferLike>>;
   residentialAddress: z$1.ZodOptional<typeof CredentialResidentialAddressSchema>;
+  residentialAddressProofCategory: z$1.ZodOptional<z$1.ZodString>;
+  residentialAddressProofDateOfIssue: z$1.ZodOptional<z$1.ZodDate>;
+  residentialAddressProofFile: z$1.ZodOptional<z$1.ZodType<Buffer<ArrayBufferLike>>>;
 }>;
 type CredentialSubject = z$1.infer<typeof CredentialSubjectSchema>;
 interface VerifiableCredentialSubject extends Omit<CredentialSubject, "residentialAddress"> {
@@ -82,9 +82,6 @@ interface VerifiableCredentialSubject extends Omit<CredentialSubject, "residenti
   residentialAddressCity?: string;
   residentialAddressPostalCode?: string;
   residentialAddressCountry?: string;
-  residentialAddressProofCategory?: string;
-  residentialAddressProofDateOfIssue?: string;
-  residentialAddressProofFile?: Buffer<ArrayBufferLike>;
 }
 // TODO: This is a stub of the types for @digitalbazaar/vc
 // when they introduce TypeScript support we should remove this
@@ -122,44 +119,48 @@ interface CustomIssuerType {
 type AvailableIssuerType = Omit<Ed25519VerificationKey2020Options, "type"> | Ed25519VerificationKey2020 | CustomIssuerType;
 //#endregion
 //#region ../@credentials/src/builder.d.ts
-type Credential = VerifiableCredential<VerifiableCredentialSubject>;
+type Credentials = VerifiableCredential<VerifiableCredentialSubject>;
 //#endregion
 //#region ../@credentials/src/verifier.d.ts
-type VerifyCredentialResult = [boolean, Map<AvailableIssuerType, vc.VerifyCredentialResult>];
+type VerifyCredentialsResult = [boolean, Map<AvailableIssuerType, vc.VerifyCredentialResult>];
+//#endregion
+//#region ../@core/src/types/index.d.ts
+type PassportingPeer = {
+  id: string;
+  name: string;
+  issuer_public_key: string;
+  passporting_server_url_base: string;
+};
 //#endregion
 //#region ../@core/src/kwil-infra/create-kwil-signer.d.ts
 type KwilSignerType = KeyPair | Wallet | nacl.SignKeyPair | JsonRpcSigner | Keypair | KeyPair$1;
 //#endregion
 //#region ../@core/src/kwil-actions/actions.d.ts
 
-declare const GetAccessGrantsGrantedInputSchema: z.ZodObject<{
-  user_id: z.ZodNullable<z.ZodUUID>;
-  page: z.ZodNumber;
-  size: z.ZodNumber;
-}>;
-type GetAccessGrantsGrantedInput = z.infer<typeof GetAccessGrantsGrantedInputSchema>;
-declare const GetAccessGrantsGrantedOutputSchema: z.ZodObject<{
+declare const idOSGrantSchema: z.ZodObject<{
   id: z.ZodUUID;
   ag_owner_user_id: z.ZodUUID;
   ag_grantee_wallet_identifier: z.ZodString;
   data_id: z.ZodUUID;
   locked_until: z.ZodNumber;
-  content_hash: z.ZodNullable<z.ZodString>;
+  content_hash: z.ZodString;
   inserter_type: z.ZodString;
   inserter_id: z.ZodString;
 }>;
-type GetAccessGrantsGrantedOutput = z.infer<typeof GetAccessGrantsGrantedOutputSchema>;
+type idOSGrant = z.infer<typeof idOSGrantSchema>;
+declare const GetGrantsPaginatedInputSchema: z.ZodObject<{
+  user_id: z.ZodNullable<z.ZodUUID>;
+  page: z.ZodNumber;
+  size: z.ZodNumber;
+}>;
+type GetGrantsPaginatedInput = z.infer<typeof GetGrantsPaginatedInputSchema>;
 /**
-
 *  As arguments can be undefined (user can not send them at all), we have to have default values: page=1, size=20
-
 *  Page number starts from 1, as UI usually shows to user in pagination element
-
 *  Ordering is consistent because we use height as first ordering parameter
-
 */
 
-declare const CreateAgByDagForCopyInputSchema: z.ZodObject<{
+declare const CreateAccessGrantByDagInputSchema: z.ZodObject<{
   dag_owner_wallet_identifier: z.ZodString;
   dag_grantee_wallet_identifier: z.ZodString;
   dag_data_id: z.ZodUUID;
@@ -167,26 +168,11 @@ declare const CreateAgByDagForCopyInputSchema: z.ZodObject<{
   dag_content_hash: z.ZodString;
   dag_signature: z.ZodString;
 }>;
-type CreateAgByDagForCopyInput = z.infer<typeof CreateAgByDagForCopyInputSchema>;
+type CreateAccessGrantByDagInput = z.infer<typeof CreateAccessGrantByDagInputSchema>;
 /**
-
 *  Get the wallet type and public key for XRPL/NEAR wallets from database
-
 *  This works for EVM-compatible signatures only
-
 */
-
-declare const AddPassportingPeerAsOwnerInputSchema: z.ZodObject<{
-  id: z.ZodUUID;
-  name: z.ZodString;
-  issuer_public_key: z.ZodString;
-  passporting_server_url_base: z.ZodString;
-}>;
-type AddPassportingPeerAsOwnerInput = z.infer<typeof AddPassportingPeerAsOwnerInputSchema>;
-//#endregion
-//#region ../@core/src/kwil-actions/index.d.ts
-type idOSGrant = GetAccessGrantsGrantedOutput;
-type idOSPassportingPeer = AddPassportingPeerAsOwnerInput;
 //#endregion
 //#region src/index.d.ts
 type idOSConsumerConfig = {
@@ -207,21 +193,20 @@ declare class idOSConsumer {
   private constructor();
   get signer(): KwilSigner;
   get encryptionPublicKey(): string;
-  getCredentialSharedFromIDOS(dataId: string): Promise<idOSCredential | undefined>;
-  getCredentialSharedContentDecrypted(dataId: string): Promise<string>;
-  rescindSharedCredential(credentialId: string): Promise<void>;
+  getSharedCredentialFromIDOS(dataId: string): Promise<idOSCredential | undefined>;
+  getSharedCredentialContentDecrypted(dataId: string): Promise<string>;
   getGrantsCount(userId?: string | null): Promise<number>;
   getAccessGrantsForCredential(credentialId: string): Promise<idOSGrant>;
   getCredentialsSharedByUser(userId: string): Promise<Omit<idOSCredential, "content">[]>;
   getReusableCredentialCompliantly(credentialId: string): Promise<idOSCredential>;
-  getAccessGrants(params: GetAccessGrantsGrantedInput): Promise<{
+  getAccessGrants(params: GetGrantsPaginatedInput): Promise<{
     grants: idOSGrant[];
     totalCount: number;
   }>;
-  createAccessGrantByDag(params: CreateAgByDagForCopyInput): Promise<CreateAgByDagForCopyInput>;
-  getPassportingPeers(): Promise<idOSPassportingPeer[]>;
-  verifyCredential<K = VerifiableCredentialSubject>(credentials: VerifiableCredential<K>, issuers: AvailableIssuerType[]): Promise<VerifyCredentialResult>;
+  createAccessGrantByDag(params: CreateAccessGrantByDagInput): Promise<CreateAccessGrantByDagInput>;
+  getPassportingPeers(): Promise<PassportingPeer[]>;
+  verifyCredentials<K = VerifiableCredentialSubject>(credentials: VerifiableCredential<K>, issuers: AvailableIssuerType[]): Promise<VerifyCredentialsResult>;
 }
 //#endregion
-export { type AvailableIssuerType, type Credential, type IDDocumentType, type VerifiableCredential, type VerifiableCredentialSubject, type VerifyCredentialResult, idOSConsumer, idOSConsumerConfig, type idOSCredential, type idOSGrant };
+export { type AvailableIssuerType, type Credentials, type IDDocumentType, type VerifiableCredential, type VerifiableCredentialSubject, type VerifyCredentialsResult, idOSConsumer, idOSConsumerConfig, type idOSCredential, type idOSGrant };
 //# sourceMappingURL=index.d.ts.map

@@ -1,17 +1,12 @@
 import { base64Encode, utf8Decode } from "../codecs-Ddj-ztlR.js";
-import { BaseProvider, STORAGE_KEYS } from "../keys-DRzus7df.js";
-import { decrypt, encrypt, keyDerivation } from "../encryption-BHOssWvX.js";
-import { ADD_ADDRESS_TYPES, DOWNLOAD_TYPES, REMOVE_ADDRESS_TYPES, UPLOAD_TYPES } from "../types-KQOutY5w.js";
-import { LocalStorageStore } from "../store-BMwkXBSJ.js";
-import * as HexCodec from "@stablelib/hex";
-import * as Utf8Codec from "@stablelib/utf8";
+import { BaseProvider, STORAGE_KEYS } from "../keys-BYTM9ukg.js";
+import { decrypt, encrypt, keyDerivation } from "../encryption-Dn-cOOz5.js";
+import { LocalStorageStore } from "../store-CJsdFslr.js";
 import * as Base64Codec from "@stablelib/base64";
-import { syncScrypt } from "scrypt-js";
 import nacl from "tweetnacl";
 import { ChainControllerApi, Configuration } from "@partisiablockchain/blockchain-api-transaction-client";
 import { ethers } from "ethers";
 import { AbiByteInput } from "@partisiablockchain/abi-client";
-import { randomBytes } from "crypto";
 
 //#region src/mpc/api.ts
 const postHeaders = {
@@ -28,19 +23,12 @@ function buildOptions(method, headers, entityBytes) {
 	return result;
 }
 /**
-
 * Make a http put-request.
-
 *
-
 * @param url the url to request.
-
 * @param object the object to put.
-
 * @param headers
-
 * @return a promise containing whether the put succeeded or not.
-
 */
 function putRequest(url, object, headers) {
 	const options = buildOptions("PUT", {
@@ -48,12 +36,6 @@ function putRequest(url, object, headers) {
 		...headers
 	}, object);
 	return fetch(url, options).then(async (response) => {
-		const responseClone = response.clone();
-		const responseBody = await responseClone.text();
-		console.log({
-			responseCode: response.status,
-			responseBody
-		});
 		return response.status.toString();
 	}).catch((error) => {
 		console.error(error);
@@ -61,52 +43,27 @@ function putRequest(url, object, headers) {
 	});
 }
 /**
-
 * Make a http patch-request.
-
 *
-
 * @param url the url to request.
-
 * @param object the object to put.
-
 * @param headers
-
 * @return a promise containing whether the put succeeded or not.
-
 */
 function patchRequest(url, object, headers) {
 	const options = buildOptions("PATCH", {
 		...postHeaders,
 		...headers
 	}, object);
-	return fetch(url, options).then(async (response) => {
-		const responseClone = response.clone();
-		const responseBody = await responseClone.text();
-		console.log({
-			responseCode: response.status,
-			responseBody
-		});
-		return response.status.toString();
-	}).catch((error) => {
-		console.error(error);
-		return error;
-	});
+	return fetch(url, options).then(async (response) => response.ok).catch(() => false);
 }
 /**
-
 * Make a http post-request.
-
 *
-
 * @param url the url to request.
-
 * @param object the object to post.
-
 * @param headers
-
 * @return a promise containing the result of the post request.
-
 */
 function postRequest(url, object, headers) {
 	const options = buildOptions("POST", {
@@ -117,12 +74,6 @@ function postRequest(url, object, headers) {
 }
 function handleFetch(promise) {
 	return promise.then(async (response) => {
-		const responseClone = response.clone();
-		const responseBody = await responseClone.text();
-		console.log({
-			responseCode: response.status,
-			responseBody
-		});
 		if (response.status === 200) {
 			const data = await response.json();
 			return {
@@ -148,38 +99,19 @@ function handleFetch(promise) {
 var EngineClient = class {
 	baseUrl;
 	contractAddress;
-	walletType;
-	constructor(baseUrl, contractAddress, walletType) {
+	constructor(baseUrl, contractAddress) {
 		this.contractAddress = contractAddress;
 		this.baseUrl = baseUrl;
-		this.walletType = walletType;
-	}
-	getAuthHeader(signature) {
-		let prefix;
-		console.log({ walletType: this.walletType });
-		switch (this.walletType) {
-			case "evm":
-				prefix = "eip712";
-				break;
-			case "near":
-				prefix = "NEAR";
-				break;
-			case "xrpl":
-				prefix = "XRPL";
-				break;
-			default: prefix = "eip712";
-		}
-		return { Authorization: `${prefix} ${signature}` };
 	}
 	async sendUpload(id, uploadRequest, signature) {
-		const authHeader = this.getAuthHeader(signature);
+		const authHeader = { Authorization: `eip712 ${signature}` };
 		const url = `${this.baseUrl}/offchain/${this.contractAddress}/shares/${id}`;
 		const status = await putRequest(url, uploadRequest, authHeader);
 		if (status !== "201") throw new Error(`Error uploading share to ${this.contractAddress} at ${url}`);
 		return status;
 	}
 	async sendDownload(id, downloadRequest, signature) {
-		const authHeader = this.getAuthHeader(signature);
+		const authHeader = { Authorization: `eip712 ${signature}` };
 		const url = `${this.baseUrl}/offchain/${this.contractAddress}/shares/${id}`;
 		return await postRequest(url, downloadRequest, authHeader);
 	}
@@ -207,21 +139,6 @@ var EngineClient = class {
 		const url = `${this.baseUrl}/offchain/${this.contractAddress}/shares/${id}`;
 		const ok = await patchRequest(url, updateRequest, authHeader);
 		if (!ok) throw new Error(`Error updating wallets to ${this.contractAddress} at ${url}`);
-		return ok;
-	}
-	async sendAddAddress(id, addRequest, signature) {
-		const authHeader = this.getAuthHeader(signature);
-		const url = this.baseUrl + "/offchain/" + this.contractAddress + "/shares/" + id + "/add_address";
-		const status = await patchRequest(url, addRequest, authHeader);
-		if (status !== "200") throw new Error(`Error adding a wallet to ${id} at ${url}`);
-		return status;
-	}
-	async sendRemoveAddress(id, removeRequest, signature) {
-		const authHeader = this.getAuthHeader(signature);
-		const url = this.baseUrl + "/offchain/" + this.contractAddress + "/shares/" + id + "/remove_address";
-		const status = await patchRequest(url, removeRequest, authHeader);
-		if (status !== "200") throw new Error(`Error removing address from ${id} at ${url}`);
-		return status;
 	}
 };
 
@@ -269,92 +186,58 @@ function deserializeState(state, client, address) {
 
 //#endregion
 //#region src/mpc/secretsharing/polynomial.ts
-/**
-
-*  Polynomials with coefficients in a finite field.
-
-*
-
-* <p>Copied from <a href="https://gitlab.com/partisiablockchain/language/abi/zk-client"> zk-client</a>.
-
-*/
+/** Polynomials with coefficients in a finite field. */
 var Polynomial = class Polynomial {
 	coefficients;
 	constructor(coefficients) {
 		this.coefficients = coefficients;
 	}
 	/**
-	
 	* Construct a polynomial from a set of coefficients. The degree of the resultant polynomial is
-	
 	* assumed to be equal to the number of coefficients minus 1. The constant term of the polynomial
-	
 	* is assumed to be stored in the first position of the coefficients.
-	
 	*
-	
 	* @param coefficients the coefficients of the polynomial
-	
 	* @param zero zero element of the field
-	
 	* @return the constructed polynomial
-	
 	*/
 	static create(coefficients, zero) {
-		return new Polynomial(this.filterHighZeroes(coefficients, zero));
+		return new Polynomial(Polynomial.filterHighZeroes(coefficients, zero));
 	}
 	static filterHighZeroes(coefficients, zero) {
 		for (let i = coefficients.length - 1; i >= 0; i--) if (!coefficients[i].isZero()) return coefficients.slice(0, i + 1);
 		return [zero];
 	}
 	/**
-	
 	* Returns the coefficients of the polynomial.
-	
 	*
-	
 	* @return the coefficients of the polynomial
-	
 	*/
 	getCoefficients() {
 		return this.coefficients.slice();
 	}
 	/**
-	
 	* Returns the degree of this polynomial.
-	
 	*
-	
 	* @return the degree of the polynomial
-	
 	*/
 	degree() {
 		return this.coefficients.length - 1;
 	}
 	/**
-	
 	* Returns the constant term of the polynomial.
-	
 	*
-	
 	* @return the term stored on position 0 of the coefficients of this polynomial
-	
 	*/
 	getConstantTerm() {
 		return this.coefficients[0];
 	}
 	/**
-	
 	* Evaluates this polynomial on a point. That is, if F is the polynomial and x a value, then this
-	
 	* method returns F(x).
-	
 	*
-	
 	* @param point the point to evaluate this polynomial on
-	
 	* @return F(point) where F is this polynomial
-	
 	*/
 	evaluate(point) {
 		const degree = this.degree();
@@ -369,75 +252,55 @@ var Polynomial = class Polynomial {
 
 //#endregion
 //#region src/mpc/secretsharing/f256.ts
-/** Represents an element in GF(2^8) using the reduction polynomial x^8+x^4+x^3+x+1. */
 var F256 = class F256 {
 	value;
 	constructor(value) {
 		this.value = value;
 	}
 	/**
-	
 	* The zero element.
-	
 	*/
 	static ZERO = F256.createElement(0);
 	/**
-	
 	* The one element.
-	
 	*/
 	static ONE = F256.createElement(1);
 	/**
-	
 	* Create a new field element with the given value.
-	
 	* @param value the value
-	
 	*/
 	static createElement(value) {
 		return new F256(value & 255);
 	}
 	/**
-	
 	* Get the computation alphas for this field.
-	
 	* @returns the computation alphas
-	
 	*/
-	static alphas(numNodes) {
-		return Array.from(Array.from({ length: numNodes }, (_value, key) => F256.createElement(key + 1)));
+	static computationAlphas() {
+		return Constants.computationAlphas;
 	}
 	/**
-	
 	* Create a polynomial.
-	
 	* @param coefficients the coefficients of the polynomial
-	
 	*/
 	static createPoly(coefficients) {
-		return Polynomial.create(coefficients, this.ZERO);
+		return Polynomial.create(coefficients, F256.ZERO);
 	}
-	/** @inheritDoc */
 	add(other) {
 		return Constants.elements[this.value ^ other.value];
 	}
-	/** @inheritDoc */
 	isEqualTo(other) {
 		return this.value === other.value;
 	}
-	/** @inheritDoc */
 	isOne() {
 		return this.value === 1;
 	}
-	/** @inheritDoc */
 	isZero() {
 		return this.value === 0;
 	}
-	/** @inheritDoc */
 	modInverse() {
 		return Constants.elements[Constants.multiplicativeInverse[this.value]];
 	}
-	/** @inheritDoc */
 	multiply(other) {
 		let a = this.value;
 		let b = other.value;
@@ -451,21 +314,25 @@ var F256 = class F256 {
 		}
 		return Constants.elements[p];
 	}
-	/** @inheritDoc */
 	negate() {
 		return this;
 	}
-	/** @inheritDoc */
 	squareRoot() {
 		throw new Error("Not implemented");
 	}
-	/** @inheritDoc */
 	subtract(other) {
 		return this.add(other);
 	}
 };
 const Constants = {
 	elements: Array.from({ length: 256 }, (_value, key) => F256.createElement(key)),
+	computationAlphas: [
+		F256.createElement(1),
+		F256.createElement(2),
+		F256.createElement(3),
+		F256.createElement(4),
+		F256.createElement(5)
+	],
 	multiplicativeInverse: [
 		0,
 		1,
@@ -729,23 +596,14 @@ const Constants = {
 //#endregion
 //#region src/mpc/secretsharing/lagrange.ts
 /**
-
 * Try to interpolate a polynomial that passes through the supplied points.
-
 *
-
 * @param xs x-coordinates in the points
-
 * @param ys y-coordinates in the points
-
 * @param zero 0 element in the Finite Field.
-
 * @param one 1 element in the Finite Field.
-
 *
-
 * @returns the interpolated polynomial or null if unable to interpolate
-
 */
 function interpolate(xs, ys, zero, one) {
 	if (xs.length !== ys.length) throw new Error("xs and ys must be of same size");
@@ -773,25 +631,15 @@ function interpolate(xs, ys, zero, one) {
 	return Polynomial.create(coefficients, zero);
 }
 /**
-
 * Interpolate the minimal polynomial that passes through all the supplied points. And verify that
-
 * the polynomial has a degree less that maximalDegree.
-
 *
-
 * @param xs x-coordinates in the points
-
 * @param ys y-coordinates in the points
-
 * @param zero 0 element in the Finite Field.
-
 * @param one 1 element in the Finite Field.
-
 * @param maximalDegree the expected maximal degree
-
 * @return the interpolated polynomial
-
 */
 function interpolateCheckDegree(xs, ys, maximalDegree, zero, one) {
 	const poly = interpolate(xs, ys, zero, one);
@@ -799,167 +647,180 @@ function interpolateCheckDegree(xs, ys, maximalDegree, zero, one) {
 	return poly;
 }
 /**
-
-* Try to interpolate a polynomial that passes through at least <code>2 &sdot; maximalDegree + 1
-
-* </code> of the supplied points.
-
-*
-
-* <p>Element lists ({@code xs} and {@code ys}) must have same size.
-
-*
-
-* @param xs x-coordinates in the points
-
-* @param ys y-coordinates in the points
-
-* @param maximalDegree the expected maximal degree
-
-* @param zero 0 element in the Finite Field.
-
-* @param one 1 element in the Finite Field.
-
-*
-
-* @returns the interpolated polynomial or undefined if unable to interpolate
-
-*/
-function interpolateIfPossible(xs, ys, maximalDegree, zero, one) {
-	if (xs.length !== ys.length) throw new Error("xs and ys must be of same size");
-	return interpolateIfPossibleInner(xs, ys, maximalDegree, zero, one);
-}
-function interpolateIfPossibleInner(xs, ys, maximalDegree, zero, one) {
-	if (xs.length <= 2 * maximalDegree + 1) {
-		const interpolated = interpolate(xs, ys, zero, one);
-		if (interpolated.degree() > maximalDegree) return void 0;
-		else return interpolated;
-	} else {
-		for (let removeIndex = 0; removeIndex < xs.length; removeIndex++) {
-			const interpolated = interpolateIfPossibleInner(withoutIndex(xs, removeIndex), withoutIndex(ys, removeIndex), maximalDegree, zero, one);
-			if (interpolated !== void 0) return interpolated;
-		}
-		return void 0;
-	}
-}
-function withoutIndex(values, removeIndex) {
-	return values.filter((_value, index, _array) => index != removeIndex);
-}
-/**
-
 * Utility for lagrange interpolation.
-
 */
 const Lagrange = {
 	interpolate,
-	interpolateCheckDegree,
-	interpolateIfPossible
+	interpolateCheckDegree
 };
 
 //#endregion
-//#region src/mpc/secretsharing/shamir-secret-shares.ts
-/** Factory for creating elements of {@link ShamirSecretShares}. */
-var ShamirFactory = class {
-	shamirConfig;
+//#region src/mpc/secretsharing/binary-secret-shares.ts
+/**
+* Binary data which has been broken into secret shares. BinarySecretShares are distributed among ZK
+* nodes when inputting a secret variable, and received from ZK nodes when reconstructing a secret
+* variable.
+*/
+var BinarySecretShares = class BinarySecretShares {
+	secretShares;
+	static ALPHAS = F256.computationAlphas();
 	/**
-	
-	* Create the {@link ShamirFactory}.
-	
+	* Constructs secret shares from a list of shares. The list contains a share for each
+	* sending/receiving party of the secret data.
 	*
-	
-	* @param shamirConfig configuration for creating and reconstructing shamir secret shares.
-	
+	* @param secretShares the list of shares
 	*/
-	constructor(shamirConfig) {
-		this.shamirConfig = shamirConfig;
+	constructor(secretShares) {
+		this.secretShares = secretShares;
 	}
-	fromPlainText(numNodes, plainText) {
-		if (numNodes != this.shamirConfig.numNodes) throw new Error(`This shamir factory expects there to be ${this.shamirConfig.numNodes} nodes, but there was ${numNodes}.`);
-		const randomElements = randomBytes(plainText.length * this.shamirConfig.numMalicious);
-		const alphas = F256.alphas(this.shamirConfig.numNodes);
-		const shares = Array.from({ length: this.shamirConfig.numNodes }, () => []);
-		for (let i = 0; i < plainText.length; i++) {
-			const coefficients = [F256.createElement(plainText[i])];
-			for (let j = 0; j < this.shamirConfig.numMalicious; j++) coefficients.push(F256.createElement(randomElements[this.shamirConfig.numMalicious * i + j]));
-			const poly = F256.createPoly(coefficients);
-			for (let j = 0; j < this.shamirConfig.numNodes; j++) shares[j].push(poly.evaluate(alphas[j]));
+	/**
+	* Creates binary secret shares from binary secret data. For each secret byte a random polynomial
+	* of degree 1 is created with the secret byte embedded as the constant term. To create each share
+	* of the byte the polynomial is evaluated at a point.
+	*
+	* @param variableData binary secret variable data to create the secret shares from
+	* @param rng randomness generator used to generate random polynomials
+	* @return the created shares.
+	*/
+	static create(variableData, rng) {
+		const random = rng ?? getRandomBytes;
+		const sharedElements = [];
+		for (let i = 0; i < BinarySecretShares.ALPHAS.length; i++) sharedElements.push([]);
+		for (let i = 0; i < variableData.length; i++) {
+			const secret = F256.createElement(variableData[i]);
+			const polynomial = BinarySecretShares.generatePolynomial(secret, random);
+			for (let j = 0; j < BinarySecretShares.ALPHAS.length; j++) {
+				const share = polynomial.evaluate(BinarySecretShares.ALPHAS[j]);
+				sharedElements[j].push(share);
+			}
 		}
-		return new ShamirSecretShares(this.shamirConfig, shares);
+		return new BinarySecretShares(sharedElements.map((s) => new Share(s)));
 	}
-	fromSharesBytes(shares) {
-		const elementShares = shares.map((bytes) => {
-			if (bytes == void 0) return void 0;
-			const elements = [];
-			for (let i = 0; i < bytes.length; i++) elements.push(F256.createElement(bytes[i]));
-			return elements;
-		});
-		return new ShamirSecretShares(this.shamirConfig, elementShares);
+	/**
+	* Create binary secret shares from bytes read from ZK nodes.
+	*
+	* @param rawShares list of raw shares read from ZK nodes
+	* @return the created shares
+	*/
+	static read(rawShares) {
+		if (rawShares.filter((x) => x !== void 0).length < 3) throw new Error("Not enough shares to reconstruct");
+		const readShares = rawShares.map((s) => s === void 0 ? void 0 : Share.read(s));
+		return new BinarySecretShares(readShares);
+	}
+	/**
+	* Generates a random polynomial of degree 2:
+	*
+	* <p><i>f(x)= secret + random1*x + random2*x</i>
+	*
+	* <p>such that f(0) match the provided secret.
+	*
+	* @param secret the secret to be embedded in the constant term
+	* @param rng randomness generator used to generate random byte
+	* @return a random polynomial generated with the secret and a random number as coefficients.
+	*/
+	static generatePolynomial(secret, rng) {
+		const randomByte1 = rng(1)[0];
+		const randomByte2 = rng(1)[0];
+		const random1 = F256.createElement(randomByte1);
+		const random2 = F256.createElement(randomByte2);
+		return F256.createPoly([
+			secret,
+			random1,
+			random2
+		]);
+	}
+	getShares() {
+		return this.secretShares.map((share) => share.serialize());
+	}
+	/**
+	* Reconstruct the secret variable data from these BinarySecretShares. First the shares of each
+	* byte of the secret variable data is grouped. Then, a polynomial is interpolated from the shares
+	* of each byte. The constant term of this polynomial is the value of the secret byte. Lastly, the
+	* secret bytes are collected in a byte array to form the secret variable data.
+	*
+	* @return the reconstructed binary secret variable data
+	*/
+	reconstructSecret() {
+		const result = [];
+		for (let i = 0; i < this.getByteLength(); i++) result.push(this.reconstructSecretByte(i));
+		return Buffer.from(result);
+	}
+	/**
+	* Reconstructs one byte of the secret variable data which these binary secret shares constitute. A
+	* polynomial is interpolated from the shares of the byte, and the constant term of this polynomial
+	* is returned as the reconstructed byte.
+	*
+	* @param i index of the byte to reconstruct
+	* @return the reconstructed byte
+	*/
+	reconstructSecretByte(i) {
+		const alphas = [];
+		const sharesOfByte = [];
+		const possibleUndefined = this.secretShares.map((share) => share?.byteElements[i]);
+		for (let j = 0; j < possibleUndefined.length; j++) {
+			const possibleUndefinedElement = possibleUndefined[j];
+			if (possibleUndefinedElement !== void 0) {
+				alphas.push(BinarySecretShares.ALPHAS[j]);
+				sharesOfByte.push(possibleUndefinedElement);
+			}
+		}
+		const polynomial = Lagrange.interpolateCheckDegree(alphas, sharesOfByte, 2, F256.ZERO, F256.ONE);
+		return polynomial.getConstantTerm().value;
+	}
+	getByteLength() {
+		return this.secretShares.filter((x) => x !== void 0)[0].byteElements.length;
+	}
+	/**
+	* Returns the amount of shares.
+	*
+	* @return the size of the share list
+	*/
+	noOfShares() {
+		return this.secretShares.length;
 	}
 };
 /**
-
-* Secure secret-sharing scheme based on shamir-secret sharing.
-
-*
-
-* <p>Supported number of shares ({@code N}): {@code 4}
-
-*
-
-* <p>Based on the java implementation of the secret-sharing client.
-
-*
-
-* @see <a href="https://en.wikipedia.org/wiki/Shamir%27s_secret_sharing">Shamir's secret sharing,
-
-*     Wikipedia</a>
-
+* Secret shares are disjoint parts of a secret input. A secret share consists of a list of
+* F256s which are in turn secret shares of a single byte.
 */
-var ShamirSecretShares = class {
-	shares;
-	shamirConfig;
-	constructor(shamirConfig, shares) {
-		if (shares.length != shamirConfig.numNodes) throw new Error(`There must be ${shamirConfig.numNodes} nodes`);
-		const numReceivedShares = shares.filter((s) => s != void 0).length;
-		if (numReceivedShares < shamirConfig.numToReconstruct) throw new Error(`Must have received at least ${shamirConfig.numToReconstruct} shares to reconstruct. Received ${numReceivedShares}.`);
-		this.shamirConfig = shamirConfig;
-		this.shares = shares;
+var Share = class Share {
+	byteElements;
+	/**
+	* Constructs a secret share from a list of byte elements.
+	*
+	* @param byteElements the byte elements that constitutes the share
+	*/
+	constructor(byteElements) {
+		this.byteElements = byteElements;
 	}
-	getShareBytes(nodeIndex) {
-		const share = this.shares[nodeIndex];
-		if (share == void 0) throw new Error("Expected share to be defined");
-		return Buffer.from(share.map((field) => field.value));
-	}
-	numShares() {
-		return this.shamirConfig.numNodes;
-	}
-	reconstructPlainText() {
-		const alphas = F256.alphas(this.shamirConfig.numNodes);
-		const definedAlphas = [];
-		const definedShares = [];
-		for (let i = 0; i < this.shares.length; i++) {
-			const share = this.shares[i];
-			if (share != void 0) {
-				definedAlphas.push(alphas[i]);
-				definedShares.push(share);
-			}
+	/**
+	* Read a binary share from a stream, in the format specified by the ZK nodes. This is used when
+	* shares are fetched from ZK nodes during reconstruction of a secret variable.
+	*
+	* @param shareBytes the buffer to read the share from
+	* @return the read share
+	*/
+	static read(shareBytes) {
+		const sharesOfBytes = [];
+		for (let i = 0; i < shareBytes.length; i++) {
+			const shareOfByte = F256.createElement(shareBytes[i]);
+			sharesOfBytes.push(shareOfByte);
 		}
-		const reconstructedElements = [];
-		const numElements = definedShares[0].length;
-		for (let i = 0; i < numElements; i++) {
-			const sharesOfIthElement = [];
-			for (let j = 0; j < definedShares.length; j++) sharesOfIthElement.push(definedShares[j][i]);
-			const interpolated = Lagrange.interpolateIfPossible(definedAlphas, sharesOfIthElement, this.shamirConfig.numMalicious, F256.ZERO, F256.ONE);
-			if (interpolated === void 0) throw new Error("Unable to reconstruct secret");
-			reconstructedElements.push(interpolated.getConstantTerm().value);
-		}
-		return Buffer.from(reconstructedElements);
+		return new Share(sharesOfBytes);
 	}
-	static FACTORY = new ShamirFactory({
-		numMalicious: 1,
-		numNodes: 4,
-		numToReconstruct: 2
-	});
+	/**
+	* Serializes each byte element of the share.
+	*
+	* @return the serialized share
+	*/
+	serialize() {
+		return Buffer.from(this.byteElements.map((b) => b.value));
+	}
+	isEqualTo(that) {
+		if (that.byteElements.length !== this.byteElements.length) return false;
+		for (let i = 0; i < this.byteElements.length; i++) if (!that.byteElements[i].isEqualTo(this.byteElements[i])) return false;
+		return true;
+	}
 };
 function getRandomBytes(length) {
 	const array = new Uint8Array(length);
@@ -968,39 +829,38 @@ function getRandomBytes(length) {
 }
 
 //#endregion
+//#region src/mpc/types.ts
+const UPLOAD_TYPES = { UploadSignatureMessage: [{
+	name: "share_commitments",
+	type: "bytes32[]"
+}, {
+	name: "recovering_addresses",
+	type: "address[]"
+}] };
+const DOWNLOAD_TYPES = { DownloadSignatureMessage: [
+	{
+		name: "recovering_address",
+		type: "address"
+	},
+	{
+		name: "timestamp",
+		type: "uint64"
+	},
+	{
+		name: "public_key",
+		type: "bytes32"
+	}
+] };
+
+//#endregion
 //#region src/mpc/client.ts
 var Client = class Client {
 	baseUrl;
 	contractAddress;
 	engines;
-	signerType;
-	signerAddress;
-	signerPublicKey;
-	factory;
-	numNodes;
-	constructor(baseUrl, contractAddress, numMalicious, numNodes, numToReconstruct, signerType, signerAddress, signerPublicKey) {
+	constructor(baseUrl, contractAddress) {
 		this.baseUrl = baseUrl;
 		this.contractAddress = contractAddress;
-		this.signerType = signerType;
-		this.signerAddress = signerAddress;
-		this.signerPublicKey = signerPublicKey;
-		this.numNodes = numNodes;
-		this.factory = new ShamirFactory({
-			numMalicious,
-			numNodes,
-			numToReconstruct
-		});
-	}
-	reconfigure(signerType, signerAddress, signerPublicKey) {
-		if (![
-			"evm",
-			"xrpl",
-			"near",
-			"stellar"
-		].includes(signerType)) throw new Error("Invalid signer type");
-		this.signerType = signerType;
-		this.signerAddress = signerAddress;
-		if (signerPublicKey) this.signerPublicKey = signerPublicKey;
 	}
 	async uploadSecret(id, uploadSignature, signature, blindedShares) {
 		const engineClients = await this.getEngines();
@@ -1020,10 +880,8 @@ var Client = class Client {
 		return { status: "failure" };
 	}
 	getBlindedShares(secret) {
-		const secretShares = this.factory.fromPlainText(this.numNodes, secret);
-		var blindedShares = [];
-		for (let i = 0; i < secretShares.numShares(); i++) blindedShares.push(Client.blindShare(secretShares.getShareBytes(i)));
-		return blindedShares;
+		const shares = BinarySecretShares.create(secret).getShares();
+		return shares.map((b) => Client.blindShare(b));
 	}
 	uploadMessageToSign(uploadRequest) {
 		return {
@@ -1032,24 +890,11 @@ var Client = class Client {
 			value: uploadRequest
 		};
 	}
-	uploadRequest(blindedShares) {
-		console.log("UPLOADING TO MPC");
-		var address = "";
-		switch (this.signerType) {
-			case "evm":
-				address = `eip712:${this.signerAddress}`;
-				break;
-			case "xrpl":
-				address = `XRPL:${this.signerPublicKey}`;
-				break;
-			case "near":
-				address = `NEAR:${this.signerPublicKey?.replace("ed25519:", "")}`;
-				break;
-			default: throw new Error("Invalid signer type");
-		}
+	uploadRequest(blindedShares, signerAddress, additionalRecoveringAddresses = []) {
+		const recoveringAddresses = [signerAddress, ...additionalRecoveringAddresses];
 		return {
 			share_commitments: blindedShares.map((b) => ethers.keccak256(b)),
-			recovering_addresses: [address]
+			recovering_addresses: recoveringAddresses
 		};
 	}
 	downloadMessageToSign(downloadRequest) {
@@ -1059,22 +904,9 @@ var Client = class Client {
 			value: downloadRequest
 		};
 	}
-	downloadRequest(publicKey) {
-		var address = "";
-		switch (this.signerType) {
-			case "evm":
-				address = `eip712:${this.signerAddress}`;
-				break;
-			case "xrpl":
-				address = `XRPL:${this.signerPublicKey}`;
-				break;
-			case "near":
-				address = `NEAR:${this.signerPublicKey?.replace("ed25519:", "")}`;
-				break;
-			default: throw new Error("Invalid signer type");
-		}
+	downloadRequest(signerAddress, publicKey) {
 		return {
-			recovering_address: address,
+			recovering_address: signerAddress,
 			timestamp: Date.now(),
 			public_key: ethers.hexlify(publicKey)
 		};
@@ -1094,7 +926,7 @@ var Client = class Client {
 		};
 		var secret;
 		try {
-			secret = this.factory.fromSharesBytes(secretShares.map((item) => item.share)).reconstructPlainText();
+			secret = BinarySecretShares.read(secretShares.map((item) => item.share)).reconstructSecret();
 			return {
 				status: "ok",
 				secret
@@ -1105,104 +937,6 @@ var Client = class Client {
 				secret: void 0
 			};
 		}
-	}
-	addAddressMessageToSign(addressToAdd, publicKey, addressToAddType) {
-		var address = "";
-		switch (this.signerType) {
-			case "evm":
-				address = `eip712:${this.signerAddress}`;
-				break;
-			case "xrpl":
-				address = `XRPL:${this.signerPublicKey}`;
-				break;
-			case "near":
-				address = `NEAR:${this.signerPublicKey?.replace("ed25519:", "")}`;
-				break;
-			default: throw new Error("Invalid signer type");
-		}
-		var addressToAddFormatted = "";
-		switch (addressToAddType.toLowerCase()) {
-			case "evm":
-				addressToAddFormatted = `eip712:${addressToAdd}`;
-				break;
-			case "xrpl":
-				addressToAddFormatted = `XRPL:${publicKey}`;
-				break;
-			case "near":
-				addressToAddFormatted = `NEAR:${publicKey?.replace("ed25519:", "")}`;
-				break;
-			default: throw new Error("Invalid address to add type");
-		}
-		const value = {
-			recovering_address: address,
-			address_to_add: addressToAddFormatted,
-			timestamp: (/* @__PURE__ */ new Date()).getTime()
-		};
-		return {
-			domain: this.getTypedDomain(),
-			types: ADD_ADDRESS_TYPES,
-			value
-		};
-	}
-	removeAddressMessageToSign(addressToRemove, publicKey, addressToRemoveType) {
-		var address = "";
-		switch (this.signerType) {
-			case "evm":
-				address = `eip712:${this.signerAddress}`;
-				break;
-			case "xrpl":
-				address = `XRPL:${this.signerPublicKey}`;
-				break;
-			case "near":
-				address = `NEAR:${this.signerPublicKey?.replace("ed25519:", "")}`;
-				break;
-			default: throw new Error("Invalid signer type");
-		}
-		var addressToRemoveFormatted = "";
-		switch (addressToRemoveType.toLowerCase()) {
-			case "evm":
-				addressToRemoveFormatted = `eip712:${addressToRemove}`;
-				break;
-			case "xrpl":
-				addressToRemoveFormatted = `XRPL:${publicKey}`;
-				break;
-			case "near":
-				addressToRemoveFormatted = `NEAR:${publicKey?.replace("ed25519:", "")}`;
-				break;
-			default: throw new Error("Invalid address to remove type");
-		}
-		const value = {
-			recovering_address: address,
-			address_to_remove: addressToRemoveFormatted,
-			timestamp: (/* @__PURE__ */ new Date()).getTime()
-		};
-		return {
-			domain: this.getTypedDomain(),
-			types: REMOVE_ADDRESS_TYPES,
-			value
-		};
-	}
-	async addAddress(userId, message, signature) {
-		const engineClients = await this.getEngines();
-		const promises = [];
-		for (let i = 0; i < engineClients.length; i++) {
-			const engineClient = engineClients[i];
-			promises.push(engineClient.sendAddAddress(userId, message, signature));
-		}
-		const statuses = await Promise.all(promises);
-		if (statuses.every((item) => item === "200")) return "success";
-		return "failure";
-	}
-	async removeAddress(userId, message, signature) {
-		const engineClients = await this.getEngines();
-		const promises = [];
-		for (let i = 0; i < engineClients.length; i++) {
-			const engineClient = engineClients[i];
-			promises.push(engineClient.sendRemoveAddress(userId, message, signature));
-		}
-		const statuses = await Promise.all(promises);
-		if (statuses.every((item) => item === "200")) return "success";
-		return "failure";
 	}
 	getTypedDomain() {
 		return {
@@ -1216,7 +950,7 @@ var Client = class Client {
 			const chainController = new ChainControllerApi(new Configuration({ basePath: this.baseUrl }));
 			const rawState = await chainController.getContract({ address: this.contractAddress });
 			const state = deserializeState(Buffer.from(rawState.serializedContract, "base64"));
-			this.engines = state.nodes.map((value) => new EngineClient(value.endpoint, this.contractAddress, this.signerType));
+			this.engines = state.nodes.map((value) => new EngineClient(value.endpoint, this.contractAddress));
 		}
 		return this.engines;
 	}
@@ -1230,19 +964,15 @@ var Client = class Client {
 var LocalEnclave = class extends BaseProvider {
 	allowedEncryptionStores;
 	store;
-	storeBase64;
-	storeObfuscated;
-	storeObfuscatedBase64;
+	storeWithCodec;
 	mpcClientInstance;
 	storedEncryptionProfile;
 	constructor(options) {
 		super(options);
 		this.allowedEncryptionStores = options.allowedEncryptionStores ?? ["user"];
 		this.store = options.store ?? new LocalStorageStore();
-		this.storeObfuscated = this.store.pipeCodec(this.userIdObfuscationCodec());
-		this.storeBase64 = this.store.pipeCodec(Base64Codec);
-		this.storeObfuscatedBase64 = this.store.pipeCodec(this.userIdObfuscationCodec()).pipeCodec(Base64Codec);
-		if (options.mpcConfiguration) this.mpcClientInstance = new Client(options.mpcConfiguration.nodeUrl, options.mpcConfiguration.contractAddress, options.mpcConfiguration.numMalicious, options.mpcConfiguration.numNodes, options.mpcConfiguration.numToReconstruct, options.walletType ?? "", options.walletAddress ?? "", options.walletPublicKey);
+		this.storeWithCodec = this.store.pipeCodec(Base64Codec);
+		if (options.mpcConfiguration) this.mpcClientInstance = new Client(options.mpcConfiguration.nodeUrl, options.mpcConfiguration.contractAddress);
 	}
 	/** @override parent method to reset the enclave */
 	async reset() {
@@ -1250,77 +980,15 @@ var LocalEnclave = class extends BaseProvider {
 		this.storedEncryptionProfile = void 0;
 		this.store.reset();
 	}
-	/** @override parent method to reconfigure the enclave */
-	async reconfigure(options = {}) {
-		await super.reconfigure(options);
-		if (this.mpcClientInstance && options.walletType && options.walletAddress) this.mpcClientInstance.reconfigure(options.walletType ?? "", options.walletAddress ?? "", options.walletPublicKey);
-	}
-	/**
-	
-	* Return a codec that encrypts/decrypts data using a key derived from the provider's user ID.
-	
-	*
-	
-	* This ensures that data is minimally obfuscated to avoid low-sophistication attacks.
-	
-	*/
-	userIdObfuscationCodec() {
-		const self = this;
-		const toKey = (userId, salt) => syncScrypt(Utf8Codec.encode(userId), salt, 16384, 8, 1, nacl.secretbox.keyLength);
-		return {
-			encode(data) {
-				if (!self.options.userId) throw new Error("User ID required for encryption");
-				const dataBytes = Utf8Codec.encode(data);
-				const nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
-				const salt = nacl.randomBytes(16);
-				const key = toKey(self.options.userId, salt);
-				const payload = nacl.secretbox(dataBytes, nonce, key);
-				const combined = new Uint8Array(salt.length + nonce.length + payload.length);
-				combined.set(salt, 0);
-				combined.set(nonce, salt.length);
-				combined.set(payload, salt.length + nonce.length);
-				return `0x${HexCodec.encode(combined)}`;
-			},
-			decode(payload) {
-				if (!self.options.userId) throw new Error("User ID required for decryption");
-				if (payload.slice(0, 2) !== "0x") throw new Error(`missing 0x prefix: ${payload}`);
-				const combined = HexCodec.decode(payload.slice(2));
-				const salt = combined.slice(0, 16);
-				const nonce = combined.slice(16, 16 + nacl.secretbox.nonceLength);
-				const ciphertext = combined.slice(16 + nacl.secretbox.nonceLength);
-				const key = toKey(self.options.userId, salt);
-				const result = nacl.secretbox.open(ciphertext, nonce, key);
-				if (!result) throw new Error("Failed to decrypt data");
-				return Utf8Codec.decode(result);
-			}
-		};
-	}
 	/** @see parent method extended with loading the profile from the store */
 	async load() {
 		await super.load();
+		const password = await this.store.get(STORAGE_KEYS.PASSWORD);
 		const userId = await this.store.get(STORAGE_KEYS.USER_ID);
-		if (userId) this.options.userId = userId;
-		let password = await this.storeObfuscated.get(STORAGE_KEYS.OBFUSCATED_PASSWORD);
-		if (!password) {
-			password = await this.store.get(STORAGE_KEYS.DEPRECATED___PASSWORD);
-			if (!password) return;
-			await this.storeObfuscated.set(STORAGE_KEYS.OBFUSCATED_PASSWORD, password);
-		}
-		await this.store.delete(STORAGE_KEYS.DEPRECATED___PASSWORD);
-		let encryptionSecretKey = await this.storeObfuscatedBase64.get(STORAGE_KEYS.OBFUSCATED_BASE64_ENCRYPTION_SECRET_KEY);
-		if (!encryptionSecretKey) {
-			encryptionSecretKey = await this.storeBase64.get(STORAGE_KEYS.DEPRECATED___ENCRYPTION_SECRET_KEY);
-			if (!encryptionSecretKey) return;
-			await this.storeObfuscatedBase64.set(STORAGE_KEYS.OBFUSCATED_BASE64_ENCRYPTION_SECRET_KEY, encryptionSecretKey);
-		}
-		await this.store.delete(STORAGE_KEYS.DEPRECATED___ENCRYPTION_SECRET_KEY);
-		await this.store.delete(STORAGE_KEYS.DEPRECATED___ENCRYPTION_PRIVATE_KEY);
+		const encryptionSecretKey = await this.storeWithCodec.get(STORAGE_KEYS.ENCRYPTION_SECRET_KEY);
 		if (!password || !userId || !encryptionSecretKey) return;
 		let encryptionPasswordStore = await this.store.get(STORAGE_KEYS.ENCRYPTION_PASSWORD_STORE);
-		if (!encryptionPasswordStore || encryptionPasswordStore === "password") {
-			encryptionPasswordStore = "user";
-			await this.store.set(STORAGE_KEYS.ENCRYPTION_PASSWORD_STORE, encryptionPasswordStore);
-		}
+		if (!encryptionPasswordStore || encryptionPasswordStore === "password") encryptionPasswordStore = "user";
 		this.storedEncryptionProfile = {
 			userId,
 			password,
@@ -1329,51 +997,33 @@ var LocalEnclave = class extends BaseProvider {
 		};
 	}
 	/**
-	
 	* Encrypts a message to a receiver.
-	
 	* This method also checks if the user is authorized to use the keys.
-	
 	*
-	
 	* @param message - The message to encrypt.
-	
 	* @param receiverPublicKey - The public key of the receiver.
-	
 	*
-	
 	* @returns The encrypted message.
-	
 	*/
 	async encrypt(message, receiverPublicKey) {
 		const { keyPair } = await this.getPrivateEncryptionProfile();
 		return encrypt(message, keyPair.publicKey, receiverPublicKey);
 	}
 	/**
-	
 	* Decrypts a message from a sender.
-	
 	* This method also checks if the user is authorized to use the keys.
-	
 	*
-	
 	* @param message - The message to decrypt.
-	
 	* @param senderPublicKey - The public key of the sender.
-	
 	*
-	
 	* @returns The decrypted message.
-	
 	*/
 	async decrypt(message, senderPublicKey) {
 		const { keyPair } = await this.getPrivateEncryptionProfile();
 		return decrypt(message, keyPair, senderPublicKey);
 	}
 	/**
-	
 	* @see BaseProvider#getPrivateEncryptionProfile
-	
 	*/
 	async getPrivateEncryptionProfile(skipGuard = false) {
 		if (this.storedEncryptionProfile) {
@@ -1408,44 +1058,30 @@ var LocalEnclave = class extends BaseProvider {
 		};
 	}
 	/**
-	
 	* This method needs to check `options` and should derive the password context from it.
-	
 	*
-	
 	* @returns The password context.
-	
 	*/
 	async getPasswordContext() {
 		throw new Error("Method 'getPasswordContext' has to be implemented in the subclass.");
 	}
 	/**
-	
 	* Creates and store encryption profile from a password.
-	
 	*
-	
 	* @param password - The password to use.
-	
 	* @param userId - The user id to use.
-	
 	* @param encryptionPasswordStore - The encryption password store to use.
-	
 	*
-	
 	* @returns The encryption profile.
-	
 	*/
 	async createEncryptionProfileFromPassword(password, userId, encryptionPasswordStore) {
 		const secretKey = await keyDerivation(password, userId);
 		const keyPair = nacl.box.keyPair.fromSecretKey(secretKey);
 		await this.store.set(STORAGE_KEYS.USER_ID, userId);
-		await this.storeObfuscated.set(STORAGE_KEYS.OBFUSCATED_PASSWORD, password);
-		await this.store.delete(STORAGE_KEYS.DEPRECATED___PASSWORD);
+		await this.store.set(STORAGE_KEYS.PASSWORD, password);
 		await this.store.set(STORAGE_KEYS.ENCRYPTION_PASSWORD_STORE, encryptionPasswordStore);
-		await this.storeObfuscatedBase64.set(STORAGE_KEYS.OBFUSCATED_BASE64_ENCRYPTION_SECRET_KEY, keyPair.secretKey);
-		await this.store.delete(STORAGE_KEYS.DEPRECATED___ENCRYPTION_SECRET_KEY);
-		await this.storeBase64.set(STORAGE_KEYS.ENCRYPTION_PUBLIC_KEY, keyPair.publicKey);
+		await this.storeWithCodec.set(STORAGE_KEYS.ENCRYPTION_SECRET_KEY, keyPair.secretKey);
+		await this.storeWithCodec.set(STORAGE_KEYS.ENCRYPTION_PUBLIC_KEY, keyPair.publicKey);
 		this.storedEncryptionProfile = {
 			userId,
 			password,
@@ -1458,7 +1094,6 @@ var LocalEnclave = class extends BaseProvider {
 		if (this.options?.mode !== "new") {
 			const { status: downloadStatus, secret: downloadedPassword } = await this.downloadSecret();
 			if (downloadStatus === "ok" && downloadedPassword) return utf8Decode(downloadedPassword);
-			throw Error("A secret might be stored at MPC ZK nodes, but can't be obtained");
 		}
 		const password = this.generatePassword();
 		const { status: uploadStatus } = await this.uploadSecret(password);
@@ -1481,33 +1116,23 @@ var LocalEnclave = class extends BaseProvider {
 	async downloadSecret() {
 		if (!this.options.walletAddress) throw new Error("walletAddress is not found");
 		const ephemeralKeyPair = nacl.box.keyPair();
-		const downloadRequest = this.mpcClient.downloadRequest(ephemeralKeyPair.publicKey);
+		const signerAddress = this.options.walletAddress;
+		const downloadRequest = this.mpcClient.downloadRequest(signerAddress, ephemeralKeyPair.publicKey);
 		const messageToSign = this.mpcClient.downloadMessageToSign(downloadRequest);
 		const signedMessage = await this.signTypedData(messageToSign.domain, messageToSign.types, messageToSign.value);
 		return this.mpcClient.downloadSecret(this.userId, downloadRequest, signedMessage, ephemeralKeyPair.secretKey);
 	}
 	async uploadSecret(secret) {
-		if (!this.options.walletAddress) {
+		const signerAddress = this.options.walletAddress;
+		if (!signerAddress) {
 			console.error("signerAddress is not found");
 			return { status: "no-signer-address" };
 		}
 		const blindedShares = this.mpcClient.getBlindedShares(Buffer.from(secret, "utf8"));
-		const uploadRequest = this.mpcClient.uploadRequest(blindedShares);
+		const uploadRequest = this.mpcClient.uploadRequest(blindedShares, signerAddress);
 		const messageToSign = this.mpcClient.uploadMessageToSign(uploadRequest);
 		const signedMessage = await this.signTypedData(messageToSign.domain, messageToSign.types, messageToSign.value);
 		return this.mpcClient.uploadSecret(this.userId, uploadRequest, signedMessage, blindedShares);
-	}
-	async addAddressMessageToSign(address, publicKey, addressToAddType) {
-		return this.mpcClient.addAddressMessageToSign(address, publicKey, addressToAddType);
-	}
-	async removeAddressMessageToSign(address, publicKey, addressToRemoveType) {
-		return this.mpcClient.removeAddressMessageToSign(address, publicKey, addressToRemoveType);
-	}
-	async addAddressToMpcSecret(userId, message, signature) {
-		return this.mpcClient.addAddress(userId, message, signature);
-	}
-	async removeAddressFromMpcSecret(userId, message, signature) {
-		return this.mpcClient.removeAddress(userId, message, signature);
 	}
 };
 
