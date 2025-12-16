@@ -25,8 +25,15 @@ const { verifySignedChallenge } = Rola({
 });
 
 export async function POST(request: NextRequest) {
+  // DEBUG: Log immediately to verify request reaches the app
+  console.log('[verify-account] ========== REQUEST RECEIVED ==========');
+  console.log('[verify-account] Method:', request.method);
+  console.log('[verify-account] URL:', request.url);
+  console.log('[verify-account] Headers:', Object.fromEntries(request.headers.entries()));
+
   try {
     const body = await request.json();
+    console.log('[verify-account] Body parsed successfully');
     const { challenge, proof } = body;
 
     if (!challenge || !proof) {
