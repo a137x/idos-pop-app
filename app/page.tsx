@@ -506,7 +506,25 @@ This appears to be an error in the backend API, likely in the idOS Consumer SDK.
         }),
       });
 
-      const verifyResult = await verifyRes.json();
+      // DEBUG: Log response details before parsing
+      console.log('[DEBUG verify-account] Status:', verifyRes.status);
+      console.log('[DEBUG verify-account] Status Text:', verifyRes.statusText);
+      console.log('[DEBUG verify-account] Headers:', Object.fromEntries(verifyRes.headers.entries()));
+      const responseText = await verifyRes.text();
+      console.log('[DEBUG verify-account] Raw response body:', responseText);
+
+      // If 403, it's likely infrastructure blocking
+      if (verifyRes.status === 403) {
+        throw new Error(`Request blocked (403 Forbidden). This is likely a WAF/infrastructure issue, not the app. Raw response: ${responseText || '(empty)'}`);
+      }
+
+      // Parse the response
+      let verifyResult;
+      try {
+        verifyResult = JSON.parse(responseText);
+      } catch (e) {
+        throw new Error(`Failed to parse response as JSON. Status: ${verifyRes.status}, Body: ${responseText || '(empty)'}`);
+      }
 
       if (!verifyResult.success) {
         throw new Error(verifyResult.error || "Failed to verify Radix account");
