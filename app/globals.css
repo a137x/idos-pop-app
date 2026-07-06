@@ -524,21 +524,40 @@ a.btn {
   border: var(--line);
   border-top: none;
   background: var(--grey);
-  padding: 12px 16px;
+  padding: 12px 16px 14px;
 }
 .enclave.gone {
   display: none;
 }
+.enclave-hint {
+  margin: 4px 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 62ch;
+}
 .enclave-box {
   overflow: hidden;
+  max-width: 420px;
+}
+.enclave-box:not(:empty) {
+  border: var(--line);
+  background: var(--white);
+  padding: 8px;
 }
 .enclave-box iframe {
   height: auto !important;
   min-height: 0 !important;
   aspect-ratio: auto !important;
-  max-height: 120px;
+  max-height: 96px;
   width: 100%;
   border: none;
+  display: block;
+  /* The enclave UI is a cross-origin idOS iframe — its neon-green/grey
+     controls can't be restyled directly, so warm-shift the whole frame
+     toward the paper palette instead. Kept subtle to preserve the
+     legibility of the password input. */
+  filter: sepia(0.22) saturate(0.85) hue-rotate(-8deg);
 }
 
 /* diagnostics */

@@ -1287,12 +1287,11 @@ This appears to be an error in the backend API, likely in the idOS Consumer SDK.
           {/* idOS enclave — must be in the DOM before any idOS client is created;
               both login paths mount the enclave iframe into #idos-enclave. */}
           <div className={`enclave ${radixAccount ? "" : "gone"}`}>
-            <div className="label">
-              Secure idOS enclave ·{" "}
-              {hasProfile && credentials.length > 0
-                ? "password prompt appears here if needed"
-                : "profile check or password prompt appears here"}
-            </div>
+            <div className="label">idOS secure enclave</div>
+            <p className="enclave-hint">
+              This box is served by idOS, not OTER. When your encrypted credential
+              needs unlocking, the unlock button and password prompt appear here.
+            </p>
             <div id="idos-enclave" className="enclave-box"></div>
           </div>
 
