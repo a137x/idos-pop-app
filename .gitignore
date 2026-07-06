@@ -46,3 +46,7 @@ scrypto/idos-pop-scrypto/target/
 
 # Vendored SDK workspaces install their own deps locally
 vendor/**/node_modules/
+
+# Provisioning + Railway deploy secrets
+.env.provision.*
+deploy/railway/vars-*.env

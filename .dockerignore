@@ -1,0 +1,15 @@
+# Secrets must NEVER enter the build context / image layers
+.env
+.env.*
+!.env.example
+
+node_modules
+vendor/**/node_modules
+.next
+.git
+.claude
+scrypto/idos-pop-scrypto/target
+deploy
+dockerfiles
+tsconfig.tsbuildinfo
+*.log

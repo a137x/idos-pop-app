@@ -8,6 +8,17 @@ const nextConfig: NextConfig = {
   // Enable standalone output for Docker
   output: "standalone",
 
+  // App-router can't route dot-directories; serve the wallet's dApp
+  // verification file from an API route instead.
+  async rewrites() {
+    return [
+      {
+        source: "/.well-known/radix.json",
+        destination: "/api/well-known/radix",
+      },
+    ];
+  },
+
   webpack: (config) => {
     config.externals.push("pino-pretty", "lokijs", "encoding");
     return config;
