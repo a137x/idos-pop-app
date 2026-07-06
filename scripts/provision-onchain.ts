@@ -150,7 +150,7 @@ async function sendTx(label: string, manifestStr: string, blobs: Uint8Array[] = 
   await gw('/transaction/submit', { notarized_transaction_hex: Convert.Uint8Array.toHexString(compiled) });
   process.stdout.write(`  [${label}] ${intent.id} `);
 
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 120; i++) {
     await new Promise((r) => setTimeout(r, 2000));
     try {
       const st = await gw<any>('/transaction/status', { intent_hash: intent.id });
@@ -243,11 +243,14 @@ CALL_METHOD Address("${account}") "try_deposit_batch_or_abort" Expression("ENTIR
       ManifestSborStringRepresentation.ManifestString
     );
 
-    console.log(`  publishing package (${(wasm.length / 1024).toFixed(0)} KiB wasm)…`);
+    // lock_fee needs the full locked amount available up front (unused is
+    // refunded) — cap it to what the account actually holds.
+    const publishLock = Math.min(250, Math.floor(balance) - 5);
+    console.log(`  publishing package (${(wasm.length / 1024).toFixed(0)} KiB wasm, fee lock ${publishLock} XRD)…`);
     const pubTx = await sendTx(
       'publish',
       `
-CALL_METHOD Address("${account}") "lock_fee" Decimal("250");
+CALL_METHOD Address("${account}") "lock_fee" Decimal("${publishLock}");
 PUBLISH_PACKAGE ${definition} Blob("${codeHash}") Map<String, Tuple>();
 CALL_METHOD Address("${account}") "try_deposit_batch_or_abort" Expression("ENTIRE_WORKTOP") Enum<0u8>();`,
       [wasm]
