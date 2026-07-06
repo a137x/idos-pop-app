@@ -6,6 +6,18 @@ pub struct ProofOfPersonInfo {
     pub issuer_id: String,
 }
 
+/// Emitted once at instantiation so deploy tooling can extract every address
+/// from the transaction receipt (there is no other event on this blueprint,
+/// and the receipt's new-entity list can't distinguish the issuer from the
+/// AccountLocker it creates).
+#[derive(ScryptoSbor, ScryptoEvent)]
+pub struct ProofOfPersonIssuerInstantiatedEvent {
+    pub component_address: ComponentAddress,
+    pub pop_resource: ResourceAddress,
+    pub controller_badge_resource: ResourceAddress,
+    pub dapp_definition: GlobalAddress,
+}
+
 #[derive(ScryptoSbor, NonFungibleData)]
 pub struct ProofOfPerson {
     #[mutable]
@@ -20,7 +32,7 @@ pub struct ProofOfPerson {
 
 #[blueprint]
 #[types(ProofOfPerson, String, Instant)]
-
+#[events(ProofOfPersonIssuerInstantiatedEvent)]
 mod proof_of_person_issuer {
     enable_method_auth! {
         methods {
@@ -56,7 +68,7 @@ mod proof_of_person_issuer {
             .divisibility(DIVISIBILITY_MAXIMUM)
             .metadata(metadata! (
                 init {
-                    "name" => "Admin badge idOS Proof-of-Personhood", locked;
+                    "name" => "OTER Proof-of-Personhood Controller Badge", locked;
                     "symbol" => "ctrlPOP", locked;
                 }
             ))
@@ -97,9 +109,9 @@ mod proof_of_person_issuer {
                 )))
                 .metadata(metadata!(
                     init {
-                        "name" => "idOS Proof-of-Personhood", locked;
+                        "name" => "Proof of Personhood (OTER)", locked;
                         "symbol" => "POP", locked;
-                        "description" => "Ah, a fellow human! This is a Proof-of-Personhood badge.", locked;
+                        "description" => "Ah, a fellow human! Personhood verified via idOS FaceSign — issued by OTER.", locked;
                         "dapp_definitions" => vec![dapp_def_address.clone()], updatable;
                         "icon_url" => icon_url, updatable;
                     }
@@ -162,6 +174,9 @@ mod proof_of_person_issuer {
                 ))
                 .create_with_no_initial_supply();
 
+            let pop_resource = pop_manager.address();
+            let controller_badge_resource = controller_badges.resource_address();
+
             // Instantiate component and globalize it
             let component = Self {
                 controller_badge_manager: FungibleResourceManager::from(
@@ -178,11 +193,18 @@ mod proof_of_person_issuer {
             .with_address(address_reservation)
             .metadata(metadata! {
                 init {
-                    "name" => "idOS Proof-of-Personhood Issuer".to_string(), updatable;
+                    "name" => "OTER Proof-of-Personhood Issuer".to_string(), updatable;
                     "dapp_definition" => dapp_def_address, updatable;
                 }
             })
             .globalize();
+
+            Runtime::emit_event(ProofOfPersonIssuerInstantiatedEvent {
+                component_address,
+                pop_resource,
+                controller_badge_resource,
+                dapp_definition: dapp_def_address,
+            });
 
             (component, controller_badges.into())
         }
