@@ -61,6 +61,14 @@ const enhanceErrorMessage = (err: any, context: string): string => {
   return originalMessage;
 };
 
+// Expected user-flow outcomes (cancelled wallet request, legacy secp256k1
+// account) are explained in the UI — keep them out of console.error so the
+// console only turns red on real failures.
+const isUserCancel = (err: unknown): boolean =>
+  String((err as any)?.message ?? err).includes("rejectedByUser");
+const isExpectedFlowError = (err: unknown): boolean =>
+  isUserCancel(err) || String((err as any)?.message ?? err).includes("legacy secp256k1");
+
 export default function Home() {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
@@ -425,9 +433,18 @@ The SDK returned successfully but with unexpected data format.
       setRadixLogin("done");
     } catch (err: any) {
       setRadixLogin("idle");
-      const errorMessage = enhanceErrorMessage(err, "Step 2: Radix idOS Login");
-      console.error("[Step 2: Radix idOS Login]", err);
-      setError(errorMessage || "Radix idOS login failed");
+      if (isExpectedFlowError(err)) {
+        console.info("[Step 2: Radix idOS Login]", String(err?.message ?? err));
+        setError(
+          isUserCancel(err)
+            ? "Wallet request cancelled — try again when ready."
+            : err?.message ?? "Radix idOS login failed"
+        );
+      } else {
+        const errorMessage = enhanceErrorMessage(err, "Step 2: Radix idOS Login");
+        console.error("[Step 2: Radix idOS Login]", err);
+        setError(errorMessage || "Radix idOS login failed");
+      }
     }
   };
 
@@ -688,8 +705,13 @@ This appears to be an error in the backend API, likely in the idOS Consumer SDK.
       }
 
       if (response.isErr && response.isErr()) {
-        console.error('[Radix] Wallet request returned error:', response.error);
-        throw new Error(`Wallet error: ${JSON.stringify(response.error)}`);
+        const walletErr = JSON.stringify(response.error);
+        if (walletErr.includes('rejectedByUser')) {
+          console.info('[Radix] Wallet request cancelled in the wallet');
+        } else {
+          console.error('[Radix] Wallet request returned error:', response.error);
+        }
+        throw new Error(`Wallet error: ${walletErr}`);
       }
 
       // Extract accounts and proofs from response
@@ -781,9 +803,14 @@ This appears to be an error in the backend API, likely in the idOS Consumer SDK.
       // Check account deposit rule
       await checkAccountDepositRule(account.address);
     } catch (err: any) {
-      const errorMessage = enhanceErrorMessage(err, "Step 1: Connect Radix Account");
-      console.error("[Step 1: Connect Radix Account]", err);
-      setError(errorMessage || "Failed to connect Radix account");
+      if (isUserCancel(err)) {
+        console.info("[Step 1: Connect Radix Account] cancelled in the wallet");
+        setError("Wallet request cancelled — click Connect Radix wallet to try again.");
+      } else {
+        const errorMessage = enhanceErrorMessage(err, "Step 1: Connect Radix Account");
+        console.error("[Step 1: Connect Radix Account]", err);
+        setError(errorMessage || "Failed to connect Radix account");
+      }
       setRadixAccount(null);
     } finally {
       setRadixWalletPending(false);
