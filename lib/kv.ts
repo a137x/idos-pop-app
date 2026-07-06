@@ -1,6 +1,12 @@
-import { eq } from 'drizzle-orm';
-import { db } from './db/client';
-import { popClaims, type PopClaim } from './db/schema';
+import { ensureSchema, surrealQuery, surrealStr } from './db/client';
+import {
+  POP_CLAIMS_TABLE,
+  rowToClaim,
+  type PopClaim,
+  type PopClaimRow,
+} from './db/schema';
+
+export type { PopClaim };
 
 /**
  * Check if a userId has already minted an NFT
@@ -8,17 +14,17 @@ import { popClaims, type PopClaim } from './db/schema';
  * @returns The full claim record if already claimed, null otherwise
  */
 export async function getExistingClaim(userId: string): Promise<PopClaim | null> {
-  const result = await db
-    .select()
-    .from(popClaims)
-    .where(eq(popClaims.userId, userId))
-    .limit(1);
-
-  return result[0] || null;
+  await ensureSchema();
+  const rows = await surrealQuery<PopClaimRow>(
+    `SELECT * FROM type::record(${surrealStr(POP_CLAIMS_TABLE)}, ${surrealStr(userId)});`
+  );
+  return rows[0] ? rowToClaim(rows[0]) : null;
 }
 
 /**
  * Record a new NFT claim
+ * The record id is the userId itself, so a concurrent double-claim fails
+ * atomically inside SurrealDB ("already exists") — no unique index needed.
  * @param userId - The unique idOS user ID
  * @param credentialId - The credential ID (also used as NFT ID)
  * @param radixAddress - The Radix wallet address that received the NFT
@@ -30,12 +36,15 @@ export async function recordClaim(
   radixAddress: string,
   evmAddress: string
 ): Promise<void> {
-  await db.insert(popClaims).values({
-    userId,
-    credentialId,
-    radixAddress,
-    evmAddress,
-  });
+  await ensureSchema();
+  await surrealQuery(
+    `CREATE type::record(${surrealStr(POP_CLAIMS_TABLE)}, ${surrealStr(userId)}) CONTENT {
+      user_id: ${surrealStr(userId)},
+      credential_id: ${surrealStr(credentialId)},
+      radix_address: ${surrealStr(radixAddress)},
+      evm_address: ${surrealStr(evmAddress)}
+    };`
+  );
 }
 
 /**

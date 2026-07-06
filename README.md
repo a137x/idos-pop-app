@@ -146,6 +146,48 @@ sequenceDiagram
 
 **Deduplication**: `userId` is a stable, unique idOS user identifier per person. We store this in Neon Postgres along with wallet addresses and timestamps to prevent the same person from claiming multiple NFTs. It would also be possible to store the `userId` on-ledger (even hashed), to prevent the same person from minting multiple NFTs. We don't do that out of privacy concerns.
 
+## Radix-Native idOS Login (no EVM wallet)
+
+This fork adds a **Radix→idOS login bridge** so users log in to idOS with their
+Radix wallet alone — no MetaMask. idOS authenticates with an EVM signer; instead
+of connecting one, we *derive* one deterministically from a Radix signature:
+
+1. The Radix wallet signs a ROLA proof over a **fixed derivation challenge**
+   (`SHA-256("idos-radix-bridge/login-key/v1")`).
+2. The ROLA payload the wallet signs binds this dApp's definition address and
+   origin, and ed25519 signing (RFC 8032) is deterministic — so the same Radix
+   account always produces the same signature *on this dApp only*.
+3. `HKDF-SHA256(signature)` → secp256k1 key → in-memory `ethers.Wallet` →
+   `idOSClient.withUserSigner(...)`. The key is recreated on each visit and
+   never stored or transmitted; the signature never leaves the browser.
+
+Implementation: `lib/radix/idos-signer.ts` (derivation), `lib/providers/radixProvider.tsx`
+(one-shot ROLA challenge override), `app/page.tsx` (`loginWithRadixIdos`, `linkRadixWallet`).
+
+**Linking an existing profile (one time):** profiles created via the idOS App are
+keyed to a real EVM wallet. Log in once with that wallet, click *Link Radix login
+to this profile* (calls idOS `addWallet` with the derived address), and every
+later login is Radix-only.
+
+**New users** still create their profile + FaceSign credential at
+[app.idos.network](https://app.idos.network) (idOS's closed-beta issuer app),
+which requires an EVM/NEAR wallet once — outside this app's control until idOS
+supports Radix natively.
+
+### Invariants — breaking any of these locks users out of their profiles
+
+- The derivation tag / HKDF salt strings in `lib/radix/idos-signer.ts`
+- The dApp definition address (per network) and the page **origin** the wallet
+  sees — treat the production domain as permanent
+- The user's Radix account choice (and its owner key): a different account or a
+  rotated key derives a different idOS login key
+
+Only Curve25519 (ed25519) Radix accounts are supported; legacy secp256k1
+accounts are rejected because ECDSA signature determinism is
+wallet-implementation-defined. Mainnet requires the dApp definition ↔ origin
+two-way link (`/.well-known/radix.json` + `claimed_websites`) so the wallet
+rejects origin-spoofed derivation requests.
+
 ## Setup
 
 ### 1. Install Dependencies
@@ -188,26 +230,37 @@ RADIX_BACKEND_PRIVATE_KEY=your_backend_private_key
 RADIX_POP_COMPONENT_ADDRESS=your_component_address
 RADIX_COMPONENT_ADMIN_BADGE_ADDRESS=your_admin_badge_address
 
-# Neon Database (for deduplication - see below)
-DATABASE_URL=postgresql://user:password@host/database?sslmode=require
+# SurrealDB (for deduplication - see below)
+SURREALDB_URL=http://127.0.0.1:8000
+SURREALDB_USER=root
+SURREALDB_PASS=root
+SURREALDB_NAMESPACE=idos_pop
+SURREALDB_DATABASE=idos_pop
 ```
 
-### 4. Set Up PostgreSQL Database
+### 4. Set Up SurrealDB
 
-The app connects to PostgreSQL via the `DATABASE_URL` environment variable only. No code changes needed.
+The app connects to SurrealDB via the `SURREALDB_*` environment variables. There is no
+migration step — the namespace, database, table schema, and indexes are created
+idempotently on the first query (`lib/db/client.ts`).
 
-1. Create database `idos_pop` in your PostgreSQL instance
-2. Run migration at `lib/db/migrate.sql`
-3. Set environment variables.
+Local dev can share an already-running SurrealDB server (e.g. the OTER stack's server on
+`:8000`): the app isolates itself in its own namespace (`idos_pop` by default). For a
+standalone server:
 
-**Why do we need a database?** To store claim records (userId, wallets, timestamps) and prevent the same person from claiming multiple NFTs.
+```bash
+docker run --rm --pull always --name surrealdb -p 8000:8000 -v ~/mydata:/mydata \
+  surrealdb/surrealdb:v3.0.4 start surrealkv:/mydata/idos-pop.db --user root --pass root
+```
+
+**Why do we need a database?** To store claim records (userId, wallets, timestamps) and prevent the same person from claiming multiple NFTs. The claim record's id IS the idOS userId, so double-claims fail atomically inside the database.
 
 ### 5. Run Locally
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3002](http://localhost:3002)
 
 ## Project Structure
 
@@ -256,29 +309,50 @@ Set `NEXT_PUBLIC_RADIX_NETWORK` to either:
 
 The gateway URL and dashboard URLs are automatically selected based on the network, but can be overridden with `NEXT_PUBLIC_GATEWAY_URL`.
 
+## Mainnet Launch Checklist (OTER)
+
+Three things become **permanent** the moment real users onboard — decide them before launch, they cannot be changed after:
+
+1. **Origin / domain** (`https://idos.oter.io`). The Radix-native login bridge hashes the page
+   origin into every user's derived idOS key — moving domains later locks users out of their
+   profiles (see the Invariants section above).
+2. **dApp definition account.** Also a key-derivation input, and what the Radix wallet displays
+   on every connect/sign. Before launch, set its on-ledger metadata: `account_type: "dapp definition"`,
+   `name`/`description`/`icon_url` (OTER branding), and `claimed_websites: ["https://idos.oter.io"]`
+   for the two-way link with `/.well-known/radix.json` (served by this app).
+3. **PoP resource metadata.** `name`, `symbol`, and `description` on the NFT resource are `locked`
+   at instantiate (see `scrypto/idos-pop-scrypto/src/lib.rs`) — whatever the mainnet instantiate
+   ships is branded forever. Only `icon_url` stays updatable.
+
+Also before public hosting: LICENSE clarification from the upstream repo owners (radixdlt/idos-pop-app
+has no LICENSE file).
+
 ## Security
 
-- **userId** is stored server-side only (in Neon database)
+- **userId** is stored server-side only (in SurrealDB)
 - **Wallet addresses** are recorded for audit trail (also server-side only)
 - **Consumer keys** are never exposed to frontend
 - **ROLA** verifies Radix wallet ownership cryptographically
 - **Session-based** minting prevents replay attacks
-- **One NFT per person** enforced via database unique constraint
+- **One NFT per person** enforced atomically — the claim record id IS the idOS userId
 
 ## Troubleshooting
 
 ### "No Proof-of-Personhood found"
-User needs to create FaceSign credential at [app.idos.network](https://app.idos.network/?ref=2993D304)
+User needs to create FaceSign credential at [app.idos.network](https://app.idos.network)
 
 ### "Already claimed" error
 Expected behavior - this person already minted an NFT. The error includes details about when and which wallets were used.
 
 ### Database connection errors
-- Check `DATABASE_URL` is set correctly in `.env.local`
-- Ensure PostgreSQL is running: `docker-compose ps`
-- Restart database: `docker-compose restart postgres`
-- Check logs: `docker-compose logs postgres`
-- Verify migration ran: `docker-compose exec postgres psql -U postgres -d idos_pop -c "\dt"`
+- Check the `SURREALDB_*` variables in `.env.local`
+- Ensure SurrealDB is reachable: `curl -s http://127.0.0.1:8000/health`
+- Inspect the claims table:
+  ```bash
+  curl -s -u root:root -H 'Accept: application/json' \
+    -H 'surreal-ns: idos_pop' -H 'surreal-db: idos_pop' \
+    -X POST http://127.0.0.1:8000/sql --data 'SELECT * FROM pop_claims;'
+  ```
 
 ### "Invalid session" when minting
 Session expired (30 min timeout). User needs to reconnect and verify again.

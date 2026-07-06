@@ -38,3 +38,11 @@ next-env.d.ts
 
 # Scrypto build artifacts
 scrypto/idos-pop-scrypto/target/
+
+# Deploy-generated env snippet (WITH_POP=1 in the OTER/PL stack deploy)
+.env.deploy
+# Scrypto build artifacts
+scrypto/idos-pop-scrypto/target/
+
+# Vendored SDK workspaces install their own deps locally
+vendor/**/node_modules/
