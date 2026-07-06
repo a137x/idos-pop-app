@@ -4,16 +4,38 @@ import { useState, useEffect } from "react";
 import { useAccount, useDisconnect, useWalletClient } from "wagmi";
 import { BrowserProvider } from "ethers";
 import { createIDOSClient, type idOSClient as IdOSClientType } from "@idos-network/client";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Wallet, FileCheck, UserCheck, Loader2, X, Gift } from "lucide-react";
 import { useAppKit } from "@reown/appkit/react";
-import Image from "next/image";
 import { OneTimeDataRequestBuilder } from "@radixdlt/radix-dapp-toolkit";
 import { useRadix } from "@/lib/hooks/useRadix";
 import { useRadixAccounts } from "@/lib/hooks/useRadixAccounts";
-import { getGatewayUrl, getDashboardUrl } from "@/lib/radix/network-config";
+import { getGatewayUrl, getDashboardUrl, getDappDefinitionAddress } from "@/lib/radix/network-config";
+import { setNextRolaChallenge } from "@/lib/providers/radixProvider";
+import { getDerivationChallenge, deriveIdosSigner } from "@/lib/radix/idos-signer";
+import type { Wallet as EthersWallet } from "ethers";
+
+// External-link arrow, mirrors the beacon/landing footer glyph
+function Ext() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <path d="M2.5 9.5 L9 3 M4 3 H9 V8" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+// Error text with clickable URLs (idOS onboarding links etc.)
+function ErrorText({ text }: { text: string }) {
+  if (!text.includes("https://")) return <p>{text}</p>;
+  const pre = text.split("https://")[0];
+  const rest = text.split("https://")[1];
+  return (
+    <p>
+      {pre}
+      <a href={`https://${rest}`} target="_blank" rel="noopener noreferrer">
+        {`https://${rest.split("?")[0]}`}
+      </a>
+    </p>
+  );
+}
 
 // Helper function to add context to error messages
 const enhanceErrorMessage = (err: any, context: string): string => {
@@ -64,8 +86,35 @@ export default function Home() {
   const [minting, setMinting] = useState(false);
   const [mintedTxId, setMintedTxId] = useState<string | null>(null);
   const [radixAccountChecked, setRadixAccountChecked] = useState(false);
-  const [rewardsButtonClicked, setRewardsButtonClicked] = useState(false);
   const [diagnosticInfo, setDiagnosticInfo] = useState<string>("");
+  // Radix→idOS login bridge (see lib/radix/idos-signer.ts)
+  const [derivedSigner, setDerivedSigner] = useState<EthersWallet | null>(null);
+  const [radixLogin, setRadixLogin] = useState<
+    "idle" | "signing" | "logging-in" | "no-profile" | "linking" | "done"
+  >("idle");
+  const [showEvmLogin, setShowEvmLogin] = useState(false);
+  // Which register panel is open. Follows the flow automatically; the user
+  // can flip back to any already-unlocked step.
+  const [viewStep, setViewStep] = useState(1);
+  // Optional return link (?back=…) — set by whichever dApp sent the user here
+  // (e.g. the OTER oracle) so they can hop back after the badge is issued.
+  const [backUrl, setBackUrl] = useState<string | null>(null);
+  // Set when this person (idOS userId / credential) already claimed a badge —
+  // detected proactively at login (claims DB) or at mint time (DB or ledger).
+  const [existingClaim, setExistingClaim] = useState<{
+    credentialId: string;
+    radixAddress?: string;
+    claimedAt?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    setViewStep(currentStep);
+  }, [currentStep]);
+
+  useEffect(() => {
+    const back = new URLSearchParams(window.location.search).get("back");
+    if (back && /^https?:\/\//.test(back)) setBackUrl(back);
+  }, []);
 
   // Track pending time and show flashing install after 15 seconds
   useEffect(() => {
@@ -95,6 +144,10 @@ export default function Home() {
     setMinting(false);
     setMintedTxId(null);
     setRadixAccountChecked(false);
+    setDerivedSigner(null);
+    setRadixLogin("idle");
+    setShowEvmLogin(false);
+    setExistingClaim(null);
   };
 
   // Step 2: Connect EVM wallet via WalletConnect modal
@@ -115,6 +168,116 @@ export default function Home() {
     setCurrentStep(radixAccount ? 2 : 1);
     setMinting(false);
     setMintedTxId(null);
+    setDerivedSigner(null);
+    setRadixLogin("idle");
+    setExistingClaim(null);
+  };
+
+  // Shared login completion: store the logged-in client and load the user's
+  // PoP credentials. Used by both the Radix-native and EVM login paths.
+  const finishIdosLogin = async (
+    loggedInClient: Extract<IdOSClientType, { state: "logged-in" }>
+  ) => {
+    setIdOSClient(loggedInClient);
+    setCurrentStep(3);
+
+    // Fetch credentials and filter to only PoP credentials (FaceSign)
+    let allCredentials;
+    try {
+      allCredentials = await loggedInClient.getAllCredentials();
+    } catch (sdkError: any) {
+      // Capture diagnostic info for idOS SDK error
+      const diagnostic = `
+idOS SDK Error Detected
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: idOS Login
+Method: loggedInClient.getAllCredentials()
+Parameters: (none)
+Client State: ${loggedInClient.state}
+User ID: ${loggedInClient.user?.id || 'N/A'}
+
+Error Message: ${sdkError.message}
+
+Stack Trace:
+${sdkError.stack || 'N/A'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This appears to be an idOS SDK internal error.
+      `.trim();
+
+      setDiagnosticInfo(diagnostic);
+      console.error("[idOS SDK Error]", diagnostic);
+      throw new Error(`idOS SDK getAllCredentials() failed: ${sdkError.message}`);
+    }
+
+    // Validate the return value
+    if (!allCredentials || !Array.isArray(allCredentials)) {
+      const diagnostic = `
+Data Validation Error
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: idOS Login
+Method: loggedInClient.getAllCredentials()
+Expected: Array of credentials
+Received: ${typeof allCredentials}
+Value: ${JSON.stringify(allCredentials, null, 2)}
+
+Client State: ${loggedInClient.state}
+User ID: ${loggedInClient.user?.id || 'N/A'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+The SDK returned successfully but with unexpected data format.
+      `.trim();
+
+      setDiagnosticInfo(diagnostic);
+      console.error("[Data Validation Error]", diagnostic);
+      setError("Failed to fetch credentials. Please try again.");
+      return;
+    }
+
+    const realCredentials = allCredentials.filter(
+      (cred) => !cred.original_id && !!cred.public_notes
+    );
+
+    // Filter to only PoP credentials (FaceSign issuer) and take the first one
+    const popCredentials = realCredentials.filter((cred) => {
+      try {
+        if (!cred.public_notes) return false;
+        const notes = JSON.parse(cred.public_notes);
+        return notes.issuer === "FaceSign";
+      } catch {
+        return false;
+      }
+    });
+
+    console.log(`Found ${popCredentials.length} PoP credential(s) out of ${realCredentials.length} total credentials`);
+
+    // Only use the first PoP credential (users should only have one, but don't error if they have multiple)
+    const firstPopCredential = popCredentials.length > 0 ? [popCredentials[0]] : [];
+
+    setCredentials(firstPopCredential);
+
+    if (firstPopCredential.length === 0) {
+      setError("No Proof-of-Personhood credentials found. Please create a FaceSign credential at https://app.idos.network");
+    }
+
+    // Proactive dedup check: has this person already claimed a badge?
+    // (One human, one badge — surface it up front, not at mint time.)
+    try {
+      const checkRes = await fetch("/api/claim/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: loggedInClient.user.id }),
+      });
+      const check = await checkRes.json();
+      if (check?.claimed && check.claim) {
+        setExistingClaim({
+          credentialId: check.claim.credentialId,
+          radixAddress: check.claim.radixAddress,
+          claimedAt: check.claim.claimedAt,
+        });
+        setCurrentStep(4);
+      }
+    } catch (err) {
+      console.error("[Claim check] failed (non-fatal):", err);
+    }
   };
 
   // Step 3: Initialize idOS and check profile
@@ -141,7 +304,7 @@ export default function Home() {
       setHasProfile(profileExists);
 
       if (!profileExists) {
-        setError("No Proof-of-Personhood found. Please create a profile and verify at https://app.idos.network/?ref=2993D304");
+        setError("No Proof-of-Personhood found. Please create a profile and verify at https://app.idos.network");
         return;
       }
 
@@ -165,91 +328,151 @@ export default function Home() {
       const clientWithSigner = await client.withUserSigner(signer);
       const loggedInClient = await clientWithSigner.logIn();
 
-      setIdOSClient(loggedInClient);
-      setCurrentStep(3);
-
-      // Fetch credentials and filter to only PoP credentials (FaceSign)
-      let allCredentials;
-      try {
-        allCredentials = await loggedInClient.getAllCredentials();
-      } catch (sdkError: any) {
-        // Capture diagnostic info for idOS SDK error
-        const diagnostic = `
-idOS SDK Error Detected
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Location: Step 2 - Initialize idOS
-Method: loggedInClient.getAllCredentials()
-Parameters: (none)
-Client State: ${loggedInClient.state}
-User ID: ${loggedInClient.user?.id || 'N/A'}
-
-Error Message: ${sdkError.message}
-
-Stack Trace:
-${sdkError.stack || 'N/A'}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-This appears to be an idOS SDK internal error.
-        `.trim();
-
-        setDiagnosticInfo(diagnostic);
-        console.error("[idOS SDK Error]", diagnostic);
-        throw new Error(`idOS SDK getAllCredentials() failed: ${sdkError.message}`);
-      }
-
-      // Validate the return value
-      if (!allCredentials || !Array.isArray(allCredentials)) {
-        const diagnostic = `
-Data Validation Error
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Location: Step 2 - Initialize idOS
-Method: loggedInClient.getAllCredentials()
-Expected: Array of credentials
-Received: ${typeof allCredentials}
-Value: ${JSON.stringify(allCredentials, null, 2)}
-
-Client State: ${loggedInClient.state}
-User ID: ${loggedInClient.user?.id || 'N/A'}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-The SDK returned successfully but with unexpected data format.
-        `.trim();
-
-        setDiagnosticInfo(diagnostic);
-        console.error("[Data Validation Error]", diagnostic);
-        setError("Failed to fetch credentials. Please try again.");
-        return;
-      }
-
-      const realCredentials = allCredentials.filter(
-        (cred) => !cred.original_id && !!cred.public_notes
-      );
-
-      // Filter to only PoP credentials (FaceSign issuer) and take the first one
-      const popCredentials = realCredentials.filter((cred) => {
-        try {
-          if (!cred.public_notes) return false;
-          const notes = JSON.parse(cred.public_notes);
-          return notes.issuer === "FaceSign";
-        } catch {
-          return false;
-        }
-      });
-
-      console.log(`Found ${popCredentials.length} PoP credential(s) out of ${realCredentials.length} total credentials`);
-
-      // Only use the first PoP credential (users should only have one, but don't error if they have multiple)
-      const firstPopCredential = popCredentials.length > 0 ? [popCredentials[0]] : [];
-
-      setCredentials(firstPopCredential);
-
-      if (firstPopCredential.length === 0) {
-        setError("No Proof-of-Personhood credentials found. Please create a FaceSign credential at https://app.idos.network/?ref=2993D304");
-      }
+      await finishIdosLogin(loggedInClient);
     } catch (err: any) {
       const errorMessage = enhanceErrorMessage(err, "Step 2: Initialize idOS");
       setError(errorMessage || "Failed to initialize idOS");
       console.error("[Step 2: Initialize idOS]", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Radix-native idOS login: derive a deterministic EVM signer from a ROLA
+  // signature over a fixed challenge (see lib/radix/idos-signer.ts) and log
+  // in to idOS with it. No EVM wallet involved.
+  const loginWithRadixIdos = async () => {
+    if (!rdt) {
+      setError("Radix dApp Toolkit not initialized");
+      return;
+    }
+    if (!radixAccount) {
+      setError("Please connect your Radix account first.");
+      return;
+    }
+
+    try {
+      setRadixLogin("signing");
+      setError("");
+
+      // The wallet must sign the FIXED derivation challenge, not a backend one
+      const challenge = await getDerivationChallenge();
+      setNextRolaChallenge(challenge);
+
+      const response = await rdt.walletApi.sendOneTimeRequest(
+        OneTimeDataRequestBuilder.accounts().exactly(1).withProof()
+      );
+
+      if (!response) throw new Error("No response from wallet");
+      if (response.isErr && response.isErr()) {
+        throw new Error(`Wallet error: ${JSON.stringify(response.error)}`);
+      }
+
+      let accounts, proofs;
+      if (response.isOk && response.isOk()) {
+        accounts = response.value.accounts;
+        proofs = response.value.proofs;
+      } else {
+        accounts = (response as any).accounts;
+        proofs = (response as any).proofs;
+      }
+
+      const account = accounts?.[0];
+      const proof = proofs?.[0];
+      if (!account || !proof) throw new Error("Wallet returned no account proof");
+      if (proof.challenge !== challenge) {
+        throw new Error("Wallet signed an unexpected challenge — please try again.");
+      }
+      if (account.address !== radixAccount) {
+        throw new Error(
+          `Please sign with the same Radix account you connected in Step 1 (${radixAccount}). ` +
+            "Your idOS login key is derived from that account's signature."
+        );
+      }
+
+      setRadixLogin("logging-in");
+
+      // The signature is the master secret for the derived key — it stays in
+      // this browser tab and is never sent anywhere.
+      const signer = await deriveIdosSigner({
+        signatureHex: proof.proof.signature,
+        curve: proof.proof.curve,
+        radixAddress: account.address,
+        dappDefinitionAddress: getDappDefinitionAddress(),
+        origin: window.location.origin,
+      });
+      setDerivedSigner(signer);
+
+      const clientConfig = createIDOSClient({
+        nodeUrl: "https://nodes.idos.network",
+        enclaveOptions: { container: "#idos-enclave" },
+      });
+      const client = await clientConfig.createClient();
+
+      const profileExists = await client.addressHasProfile(signer.address);
+      setHasProfile(profileExists);
+
+      if (!profileExists) {
+        // Not linked yet: either an existing profile needs a one-time EVM
+        // login to link this key, or the user is new to idOS entirely.
+        setRadixLogin("no-profile");
+        return;
+      }
+
+      const clientWithSigner = await client.withUserSigner(signer);
+      const loggedInClient = await clientWithSigner.logIn();
+      await finishIdosLogin(loggedInClient);
+      setRadixLogin("done");
+    } catch (err: any) {
+      setRadixLogin("idle");
+      const errorMessage = enhanceErrorMessage(err, "Step 2: Radix idOS Login");
+      console.error("[Step 2: Radix idOS Login]", err);
+      setError(errorMessage || "Radix idOS login failed");
+    }
+  };
+
+  // One-time migration: attach the Radix-derived key to an existing idOS
+  // profile (requires being logged in with the profile's current EVM wallet),
+  // then re-log-in with the derived key to prove the link works end-to-end.
+  const linkRadixWallet = async () => {
+    if (!idOSClient || idOSClient.state !== "logged-in") {
+      setError("Log in with your EVM wallet below first, then link your Radix wallet.");
+      return;
+    }
+    if (!derivedSigner) {
+      setError("Sign in with your Radix wallet first so the login key can be derived.");
+      return;
+    }
+
+    try {
+      setRadixLogin("linking");
+      setError("");
+
+      // Ownership proof for the new wallet, signed by the derived key itself
+      const message = `Add wallet ${derivedSigner.address} to my idOS profile (Radix login bridge, ${window.location.origin})`;
+      const signature = await derivedSigner.signMessage(message);
+
+      await idOSClient.addWallet({
+        id: crypto.randomUUID(),
+        address: derivedSigner.address,
+        public_key: derivedSigner.signingKey.publicKey,
+        message,
+        signature,
+        wallet_type: "evm",
+      });
+
+      // Switch the session to the derived key (reuses the same enclave)
+      const idleClient = await idOSClient.logOut();
+      const clientWithSigner = await idleClient.withUserSigner(derivedSigner);
+      const loggedInClient = await clientWithSigner.logIn();
+      await finishIdosLogin(loggedInClient);
+      setHasProfile(true);
+      setRadixLogin("done");
+    } catch (err: any) {
+      setRadixLogin("no-profile");
+      const errorMessage = enhanceErrorMessage(err, "Link Radix Wallet");
+      console.error("[Link Radix Wallet]", err);
+      setError(errorMessage || "Failed to link Radix wallet to your idOS profile");
     }
   };
 
@@ -354,7 +577,8 @@ This appears to be an error in the backend API, likely in the idOS Consumer SDK.
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 radixAddress: radixAccount,
-                evmAddress: address,
+                // Derived EVM address when logged in via the Radix bridge
+                evmAddress: address ?? idOSClient.walletIdentifier,
                 userId: idOSClient.user.id,
                 credentials: successfulCredentials,
               }),
@@ -528,7 +752,9 @@ This appears to be an error in the backend API, likely in the idOS Consumer SDK.
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 radixAddress: account.address,
-                evmAddress: address,
+                // In Radix-native login there is no connected EVM wallet;
+                // the idOS wallet identifier is the derived EVM address.
+                evmAddress: address ?? idOSClient.walletIdentifier,
                 userId: idOSClient.user.id,
                 credentials: successfulCredentials,
               }),
@@ -582,6 +808,10 @@ This appears to be an error in the backend API, likely in the idOS Consumer SDK.
     setCredentials([]);
     setVerifiedCredentials(new Map());
     setCurrentStep(1);
+    setDerivedSigner(null);
+    setRadixLogin("idle");
+    setShowEvmLogin(false);
+    setExistingClaim(null);
     // Note: We don't call rdt.disconnect() because that would disconnect
     // the entire wallet connection. We just clear our verification state.
   };
@@ -609,6 +839,16 @@ This appears to be an error in the backend API, likely in the idOS Consumer SDK.
       const result = await response.json();
 
       if (!response.ok || !result.success) {
+        // Person/credential already holds a badge (claims DB or on-ledger
+        // NFT-id dedup) — expected protocol outcome, not an error.
+        if (response.status === 409 && result.alreadyClaimed) {
+          setExistingClaim({
+            credentialId: result.nftId,
+            radixAddress: result.radixAddress,
+            claimedAt: result.claimedAt,
+          });
+          return;
+        }
         throw new Error(result.error || 'Failed to mint NFT');
       }
 
@@ -622,565 +862,557 @@ This appears to be an error in the backend API, likely in the idOS Consumer SDK.
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#090909] relative overflow-hidden">
-      {/* Gradient Glow Effects */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        {/* Top center glow (behind logos) - more prominent */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[#00ffb9] rounded-full opacity-[0.12] blur-[140px]" />
-      </div>
+  // ——— The register: four steps as a horizontal accordion ———
+  const SPINES = ["Connect Radix", "Log in to idOS", "Verify credential", "Claim PoP NFT"];
+  const stepDone = [
+    !!radixAccount,
+    !!idOSClient,
+    verifiedCredentials.size > 0 || !!existingClaim,
+    !!mintedTxId || !!existingClaim,
+  ];
+  const stepUnlocked = [
+    true,
+    !!radixAccount,
+    !!idOSClient,
+    (verifiedCredentials.size > 0 && !!radixAccount) || !!existingClaim,
+  ];
 
-      <div className="container mx-auto px-4 py-16 relative z-10">
-        {/* Header */}
-        <div className="text-center mb-12">
-          {/* Logo Section */}
-          <div className="flex items-center justify-center gap-4 mb-6">
-            <Image src="/idos-logo.png" alt="idOS" width={120} height={40} className="h-10 w-auto" />
-            <X className="w-6 h-6 text-[#00ffb9]" />
-            <Image src="/radix-logo.png" alt="Radix" width={120} height={40} className="h-10 w-auto" />
-          </div>
-          <p className="text-lg text-gray-300">
-            Complete the Proof-of-Personhood process to receive your idOS Proof-of-Personhood NFT on Radix.
-          </p>
+  const panelBodies = [
+    // ——— Step 1: Connect Radix account ———
+    !radixAccount ? (
+      <>
+        <h2>Connect your Radix account</h2>
+        <p className="desc">
+          Your wallet signs a one-time ownership proof (ROLA). The PoP badge will be
+          issued to this account.
+        </p>
+        <div className="btnrow">
+          <button
+            className="btn w100"
+            onClick={radixWalletPending ? undefined : connectRadixAccount}
+            disabled={radixWalletPending || radixVerifying || !rdt}
+          >
+            {radixWalletPending
+              ? "Approve in your Radix wallet…"
+              : radixVerifying
+              ? "Verifying ownership…"
+              : "Connect Radix wallet"}
+          </button>
+          {radixWalletPending && (
+            <button className="btn ghost" onClick={cancelRadixConnection}>
+              Cancel
+            </button>
+          )}
         </div>
+        <p className="hint">
+          New to Radix?{" "}
+          <a
+            className={showFlashingInstall ? "attn" : ""}
+            href="https://wallet.radixdlt.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Install the Radix wallet ↗
+          </a>
+          {showFlashingInstall && <> — after installing, reload this page</>}
+        </p>
+        {error && currentStep === 1 && (
+          <div className="errbox">
+            <ErrorText text={error} />
+          </div>
+        )}
+      </>
+    ) : (
+      <>
+        <h2>Account connected</h2>
+        <div className="okbox">
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="label">Account · ownership verified</div>
+            <div className="val">{radixAccount}</div>
+          </div>
+          <button className="btn ghost sm" onClick={disconnectRadixWallet}>
+            Disconnect
+          </button>
+        </div>
+        <p className="hint">Wrong account? Disconnect and start over — the flow restarts from here.</p>
+      </>
+    ),
 
-        {/* Main Content */}
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* Step 1: Connect Radix Wallet */}
-          <Card className="bg-[#1a1a1a] border-[#00ffb9]/30 relative overflow-hidden transition-colors duration-300 group">
-            {/* Card subtle glow - on hover */}
-            <div className="absolute inset-0 bg-gradient-to-br from-[#00ffb9]/5 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <CardHeader className="relative z-10">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                  radixAccount ? "bg-[#00ffb9] shadow-[0_0_20px_rgba(0,255,185,0.4)]" : currentStep >= 1 ? "bg-orange-500" : "bg-gray-700"
-                }`}>
-                  <UserCheck className={`w-5 h-5 ${radixAccount ? "text-black" : "text-white"}`} />
-                </div>
-                <div>
-                  <CardTitle className="text-white">Step 1: Connect Radix Account</CardTitle>
-                  <CardDescription className="text-gray-400">
-                    {radixAccount
-                      ? "Radix account connected successfully"
-                      : "Connect your Radix account to get started"
-                    }
-                  </CardDescription>
-                </div>
+    // ——— Step 2: Log in to idOS ———
+    <>
+      {idOSClient ? (
+        <>
+          <h2>Logged in to idOS</h2>
+          <div className="okbox">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="label">
+                {derivedSigner && radixLogin === "done"
+                  ? "idOS login · via Radix wallet"
+                  : "idOS login · via EVM wallet"}
               </div>
-            </CardHeader>
-            <CardContent className="relative z-10">
-              {!radixAccount ? (
-                <div className="space-y-4">
-                  <div className="relative">
-                    <Button
-                      onClick={radixWalletPending ? undefined : connectRadixAccount}
-                      disabled={radixWalletPending || radixVerifying || !rdt}
-                      size="lg"
-                      className="w-full bg-[#00ffb9] hover:bg-[#00ffb9]/90 text-black font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {radixWalletPending ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                          Sign In Radix Wallet
-                        </>
-                      ) : radixVerifying ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                          Verifying Account Ownership...
-                        </>
-                      ) : (
-                        "Connect Radix Wallet"
-                      )}
-                    </Button>
-                    {radixWalletPending && (
-                      <button
-                        onClick={cancelRadixConnection}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-black/20 transition-colors z-10"
-                        aria-label="Cancel request"
-                      >
-                        <X className="w-5 h-5 text-black" />
-                      </button>
-                    )}
-                  </div>
-
-                  {!radixWalletPending && !radixVerifying && (
-                    <p className="text-center text-sm text-gray-400">
-                      Click to connect your Radix account and verify ownership
-                    </p>
-                  )}
-
-                  {radixWalletPending && (
-                    <p className="text-center text-sm text-gray-400">
-                      Check your Radix Wallet app to approve the request
-                    </p>
-                  )}
-
-                  {/* Install Wallet Link - always visible when not connected */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                      <span>New to Radix?</span>
-                      <a
-                        href="https://wallet.radixdlt.com/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`text-[#00ffb9] hover:text-[#00ffb9]/80 transition-all font-medium ${
-                          showFlashingInstall ? 'animate-[glow_2s_ease-in-out_infinite]' : ''
-                        }`}
-                      >
-                        Install Wallet
-                      </a>
-                    </div>
-                    {showFlashingInstall && (
-                      <p className="text-center text-xs text-gray-500">
-                        After installing the extension, please reload this page
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Error Display for Step 1 */}
-                  {error && !radixAccount && currentStep === 1 && (
-                    <div className="p-4 bg-red-500/10 border-2 border-red-500/30 rounded-lg">
-                      <div className="text-red-400">
-                        {error.includes('https://') ? (
-                          <>
-                            {error.split('https://')[0]}
-                            <a
-                              href={`https://${error.split('https://')[1]}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="underline hover:text-red-300"
-                            >
-                              https://{error.split('https://')[1].split('?')[0]}
-                            </a>
-                          </>
-                        ) : (
-                          <p>{error}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+              {isConnected && address && <div className="val">{address}</div>}
+            </div>
+            {isConnected && (
+              <button className="btn ghost sm" onClick={handleDisconnect}>
+                Disconnect
+              </button>
+            )}
+          </div>
+          {derivedSigner && (radixLogin === "no-profile" || radixLogin === "linking") && (
+            <div className="notebox">
+              <p>
+                Enable Radix-only login for this idOS profile. After linking, you
+                won&apos;t need an EVM wallet on this site again.
+              </p>
+              <button
+                className="btn w100"
+                onClick={linkRadixWallet}
+                disabled={radixLogin === "linking"}
+              >
+                {radixLogin === "linking"
+                  ? "Linking Radix login…"
+                  : "Link Radix login to this profile"}
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <h2>Log in to idOS</h2>
+          <p className="desc">Sign once with your Radix wallet — no EVM wallet needed.</p>
+          <button
+            className="btn w100"
+            onClick={loginWithRadixIdos}
+            disabled={radixLogin === "signing" || radixLogin === "logging-in"}
+          >
+            {radixLogin === "signing"
+              ? "Approve in your Radix wallet…"
+              : radixLogin === "logging-in"
+              ? "Deriving key & logging in…"
+              : "Log in with Radix wallet"}
+          </button>
+          {radixLogin !== "no-profile" && (
+            <p className="hint">
+              Your Radix signature deterministically derives your idOS login key — it
+              never leaves this browser.
+            </p>
+          )}
+          {radixLogin === "no-profile" && (
+            <div className="notebox">
+              <p>
+                <b>No idOS profile is linked to your Radix wallet yet.</b>
+              </p>
+              <p>
+                <b>Have an idOS profile?</b> Log in with the EVM wallet it was created
+                with (below), then link your Radix wallet — one time only.
+              </p>
+              <p>
+                <b>New to idOS?</b> Create a profile and FaceSign credential at{" "}
+                <a href="https://app.idos.network" target="_blank" rel="noopener noreferrer">
+                  app.idos.network
+                </a>
+                , then come back here.
+              </p>
+            </div>
+          )}
+          {showEvmLogin || radixLogin === "no-profile" ? (
+            <div
+              style={{
+                borderTop: "1px solid var(--beige)",
+                paddingTop: 14,
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+              }}
+            >
+              {!isConnected ? (
+                <button className="btn ghost w100" onClick={handleWalletClick}>
+                  Connect EVM wallet
+                </button>
               ) : (
-                <div className="flex items-center justify-between p-4 bg-[#00ffb9]/10 border-2 border-[#00ffb9]/30 rounded-lg">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <CheckCircle2 className="w-5 h-5 text-[#00ffb9] shrink-0" />
-                    <span className="text-sm font-mono break-all text-[#00ffb9]">{radixAccount}</span>
+                <>
+                  <div className="okbox">
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="label">EVM wallet</div>
+                      <div className="val">{address}</div>
+                    </div>
+                    <button className="btn ghost sm" onClick={handleDisconnect}>
+                      Disconnect
+                    </button>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={disconnectRadixWallet}
-                    className="ml-2 shrink-0 border-gray-600 bg-transparent text-white hover:bg-[#00ffb9]/10 hover:border-[#00ffb9] hover:text-[#00ffb9]"
+                  <button
+                    className="btn w100"
+                    onClick={initializeIdOS}
+                    disabled={loading || !walletClient}
                   >
-                    Disconnect
-                  </Button>
+                    {loading
+                      ? "Checking profile…"
+                      : !walletClient
+                      ? "Loading wallet…"
+                      : "Log in with EVM wallet"}
+                  </button>
+                </>
+              )}
+            </div>
+          ) : (
+            <p className="hint">
+              <button className="linklike" onClick={() => setShowEvmLogin(true)}>
+                Use an EVM wallet instead
+              </button>
+            </p>
+          )}
+        </>
+      )}
+      {error && !idOSClient && (
+        <div className="errbox">
+          <ErrorText text={error} />
+        </div>
+      )}
+    </>,
+
+    // ——— Step 3: Verify PoP credential ———
+    <>
+      <h2>Verify your PoP credential</h2>
+      <p className="desc">
+        {credentials.length > 0
+          ? `Found ${credentials.length} PoP credential(s). Grant one-time read access so the issuer can verify it.`
+          : "Checking your idOS profile for FaceSign credentials…"}
+      </p>
+      {hasProfile &&
+        credentials.map((cred) => {
+          let metadata: any = {};
+          try {
+            metadata = cred.public_notes ? JSON.parse(cred.public_notes) : {};
+          } catch (e) {
+            console.error("Failed to parse public_notes for", cred.id);
+          }
+          const verdict = verifiedCredentials.get(cred.id);
+
+          return (
+            <div key={cred.id} className="cred">
+              <div className="cred-head">
+                <div className="cred-type">
+                  {metadata.type || "Unknown type"}
+                  {metadata.level && <span className="chip">{metadata.level}</span>}
+                </div>
+                {verifiedCredentials.has(cred.id) && (
+                  <span className={`chip ${verdict?.success ? "ok" : "bad"}`}>
+                    {verdict?.success ? "Verified" : "Failed"}
+                  </span>
+                )}
+              </div>
+              <div className="kv">ID: {cred.id}</div>
+              <div className="kv">Issuer: {cred.issuer_auth_public_key.substring(0, 20)}…</div>
+              {verifiedCredentials.has(cred.id) && !verdict?.success && (
+                <div className="errbox" style={{ marginTop: 8 }}>
+                  <p>Error: {verdict?.error || "Unknown error"}</p>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          );
+        })}
+      {hasProfile && credentials.length > 0 && verifiedCredentials.size === 0 && (
+        <button className="btn w100" onClick={verifyAllCredentials} disabled={loading}>
+          {loading ? "Requesting access grant…" : "Verify PoP credential"}
+        </button>
+      )}
+    </>,
 
-          {/* Step 2: Connect EVM Wallet */}
-          <Card className="bg-[#1a1a1a] border-[#00ffb9]/30 relative overflow-hidden transition-colors duration-300 group">
-            {/* Card subtle glow - on hover */}
-            <div className="absolute inset-0 bg-gradient-to-br from-[#00ffb9]/5 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <CardHeader className="relative z-10">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                  isConnected && hasProfile && credentials.length > 0 ? "bg-[#00ffb9] shadow-[0_0_20px_rgba(0,255,185,0.4)]" : currentStep >= 2 ? "bg-orange-500" : "bg-gray-700"
-                }`}>
-                  <Wallet className={`w-5 h-5 ${isConnected && hasProfile && credentials.length > 0 ? "text-black" : "text-white"}`} />
-                </div>
-                <div>
-                  <CardTitle className="text-white">Step 2: Connect EVM Wallet</CardTitle>
-                  <CardDescription className="text-gray-400">
-                    {!radixAccount
-                      ? "Connect Radix wallet first to continue"
-                      : "Connect an EVM compatible wallet"
-                    }
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            {radixAccount && (
-              <CardContent>
-                {!isConnected ? (
-                  <Button onClick={handleWalletClick} size="lg" className="w-full bg-[#00ffb9] hover:bg-[#00ffb9]/90 text-black font-semibold">
-                    Connect Wallet
-                  </Button>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-[#00ffb9]/10 border-2 border-[#00ffb9]/30 rounded-lg">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <CheckCircle2 className="w-5 h-5 text-[#00ffb9] shrink-0" />
-                        <span className="text-sm font-mono break-all text-[#00ffb9]">{address}</span>
-                      </div>
-                      <Button variant="outline" size="sm" onClick={handleDisconnect} className="ml-2 shrink-0 border-gray-600 bg-transparent text-white hover:bg-[#00ffb9]/10 hover:border-[#00ffb9] hover:text-[#00ffb9]">
-                        Disconnect
-                      </Button>
-                    </div>
-
-                    {(hasProfile === null || hasProfile === false) && (
-                      <Button onClick={initializeIdOS} disabled={loading || !walletClient} className="w-full bg-[#00ffb9] hover:bg-[#00ffb9]/90 text-black font-semibold">
-                        {loading ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                            Checking Profile...
-                          </>
-                        ) : !walletClient ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                            Loading Wallet...
-                          </>
-                        ) : (
-                          "Check idOS Profile"
-                        )}
-                      </Button>
-                    )}
-
-                    {/* Error Display for Step 2 */}
-                    {error && hasProfile === false && (
-                      <div className="p-4 bg-red-500/10 border-2 border-red-500/30 rounded-lg">
-                        <div className="text-red-400">
-                          {error.includes('https://') ? (
-                            <>
-                              {error.split('https://')[0]}
-                              <a
-                                href={`https://${error.split('https://')[1]}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline hover:text-red-300"
-                              >
-                                https://{error.split('https://')[1].split('?')[0]}
-                              </a>
-                            </>
-                          ) : (
-                            <p>{error}</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
+    // ——— Step 4: Claim the PoP NFT ———
+    <>
+      <h2>
+        {mintedTxId
+          ? "Badge issued"
+          : existingClaim
+          ? "Badge already issued"
+          : "Claim your PoP NFT"}
+      </h2>
+      {existingClaim && !mintedTxId && (
+        <>
+          <div className="infobox">
+            <p style={{ margin: 0 }}>
+              <b>This personhood already holds a PoP badge.</b> One human, one badge —
+              a second one can&apos;t be issued, on purpose.
+            </p>
+          </div>
+          <div className="cred">
+            <div className="kv">Badge ID: {existingClaim.credentialId}</div>
+            <div className="kv">
+              Issued to:{" "}
+              {existingClaim.radixAddress || "another Radix account (on-ledger record)"}
+            </div>
+            {existingClaim.claimedAt && (
+              <div className="kv">Issued at: {existingClaim.claimedAt}</div>
             )}
-          </Card>
-
-          {/* Step 3: Verify Credentials */}
-          <Card className="bg-[#1a1a1a] border-[#00ffb9]/30 relative overflow-hidden transition-colors duration-300 group">
-            {/* Card subtle glow - on hover */}
-            <div className="absolute inset-0 bg-gradient-to-br from-[#00ffb9]/5 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <CardHeader className="relative z-10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                    verifiedCredentials.size > 0 ? "bg-[#00ffb9] shadow-[0_0_20px_rgba(0,255,185,0.4)]" : currentStep >= 3 ? "bg-orange-500" : "bg-gray-700"
-                  }`}>
-                    <FileCheck className={`w-5 h-5 ${verifiedCredentials.size > 0 ? "text-black" : "text-white"}`} />
-                  </div>
-                  <div>
-                    <CardTitle className="text-white">Step 3: Verify PoP Credential</CardTitle>
-                    <CardDescription className="text-gray-400">
-                      {!isConnected
-                        ? "Connect your EVM wallet to continue"
-                        : credentials.length > 0
-                        ? `Found ${credentials.length} PoP credential(s)`
-                        : "Check your profile for FaceSign credentials"
-                      }
-                    </CardDescription>
-                  </div>
-                </div>
-              </div>
-            </CardHeader>
-            {isConnected && radixAccount && (
-              <CardContent className="space-y-4 relative z-10">
-                {/* idOS Enclave Container - always present when connected */}
-                <div className="p-4 border-2 border-dashed border-gray-700 rounded-lg bg-black/30">
-                  <div className="text-center mb-3">
-                    <p className="text-sm font-medium text-[#00ffb9]">
-                      Secure idOS Enclave
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {hasProfile && credentials.length > 0
-                        ? "Password prompt will appear here if needed"
-                        : "Profile check or password prompt will appear here"
-                      }
-                    </p>
-                  </div>
-                  <div id="idos-enclave" className="[&_iframe]:!h-auto [&_iframe]:!min-h-0 [&_iframe]:!aspect-auto [&_iframe]:max-h-[120px] overflow-hidden"></div>
-                </div>
-
-                {hasProfile && credentials.map((cred) => {
-                  let metadata: any = {};
-                  try {
-                    metadata = cred.public_notes ? JSON.parse(cred.public_notes) : {};
-                  } catch (e) {
-                    console.error('Failed to parse public_notes for', cred.id);
-                  }
-
-                  return (
-                    <div key={cred.id} className="p-4 border border-gray-700 rounded-lg bg-black/30">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="font-medium text-white">
-                              {metadata.type || "Unknown Type"}
-                            </p>
-                            {metadata.level && (
-                              <Badge variant="outline" className="text-xs border-gray-700 text-gray-400">
-                                {metadata.level}
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-gray-500 font-mono mb-1">ID: {cred.id}</p>
-                          <p className="text-xs text-gray-500">
-                            Issuer: {cred.issuer_auth_public_key.substring(0, 20)}...
-                          </p>
-                        </div>
-                        {verifiedCredentials.has(cred.id) && (
-                          <Badge variant={verifiedCredentials.get(cred.id)?.success ? "success" : "destructive"} className={verifiedCredentials.get(cred.id)?.success ? "bg-[#00ffb9] text-black hover:bg-[#00ffb9]" : ""}>
-                            {verifiedCredentials.get(cred.id)?.success ? "Verified" : "Failed"}
-                          </Badge>
-                        )}
-                      </div>
-                      {verifiedCredentials.has(cred.id) && !verifiedCredentials.get(cred.id)?.success && (
-                        <div className="mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
-                          Error: {verifiedCredentials.get(cred.id)?.error || "Unknown error"}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {hasProfile && credentials.length > 0 && verifiedCredentials.size === 0 && (
-                  <Button onClick={verifyAllCredentials} disabled={loading} size="lg" className="w-full bg-[#00ffb9] hover:bg-[#00ffb9]/90 text-black font-semibold">
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                    Verify PoP Credential
-                  </Button>
-                )}
-              </CardContent>
-            )}
-          </Card>
-
-          {/* Step 4: Send NFT */}
-          <Card className="bg-[#1a1a1a] border-[#00ffb9]/30 relative overflow-hidden transition-colors duration-300 group">
-            {/* Card subtle glow - on hover */}
-            <div className="absolute inset-0 bg-gradient-to-br from-[#00ffb9]/5 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <CardHeader className="relative z-10">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                  mintedTxId ? "bg-[#00ffb9] shadow-[0_0_20px_rgba(0,255,185,0.4)]" : currentStep >= 4 ? "bg-orange-500" : "bg-gray-700"
-                }`}>
-                  <CheckCircle2 className={`w-5 h-5 ${mintedTxId ? "text-black" : "text-white"}`} />
-                </div>
-                <div>
-                  <CardTitle className="text-white">Step 4: Claim Your PoP NFT</CardTitle>
-                  <CardDescription className="text-gray-400">
-                    {verifiedCredentials.size === 0
-                      ? "Verify your credentials to continue"
-                      : mintedTxId
-                      ? "NFT successfully minted!"
-                      : "Receive your Proof-of-Personhood NFT"
-                    }
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            {verifiedCredentials.size > 0 && radixAccount && (
-              <CardContent className="relative z-10">
-                <div className="space-y-4">
-                  {/* Deposit Rule Warning */}
-                  {!mintedTxId && depositRuleAccepts === false && (
-                    <div className="flex items-center justify-between p-4 bg-orange-500/10 border-2 border-orange-500/30 rounded-lg">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <X className="w-5 h-5 text-orange-500 shrink-0" />
-                        <span className="text-sm text-orange-400">
-                          <span className="font-semibold">Deposits Disabled:</span> Your Radix account has third-party deposits disabled. Please enable deposits in your Radix Wallet app.
-                        </span>
-                      </div>
-                      <Button
-                        onClick={() => radixAccount && checkAccountDepositRule(radixAccount)}
-                        disabled={depositRuleChecking}
-                        size="sm"
-                        className="ml-2 shrink-0 bg-orange-500 hover:bg-orange-600 text-white font-semibold"
-                      >
-                        {depositRuleChecking ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                            Checking...
-                          </>
-                        ) : (
-                          "Check Again"
-                        )}
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* Only show verification complete section if deposits are enabled or NFT is minted */}
-                  {(depositRuleAccepts !== false || mintedTxId) && (
-                    <div className="text-center p-8 bg-black/30 border border-gray-700 rounded-lg">
-                    <UserCheck className="w-16 h-16 mx-auto mb-4 text-[#00ffb9]" />
-                    <h3 className="text-xl font-bold mb-2 text-white">
-                      {mintedTxId ? "NFT Minted Successfully!" : "Ready to Claim!"}
-                    </h3>
-                    <p className="text-gray-400 mb-4">
-                      {mintedTxId
-                        ? "Your Proof-of-Personhood NFT has been sent to your Radix account."
-                        : "All steps complete! You can now receive your Proof-of-Personhood NFT."
-                      }
-                    </p>
-
-                    {!mintedTxId ? (
-                      <Button
-                        onClick={mintPopNft}
-                        disabled={minting || depositRuleChecking || depositRuleAccepts === false}
-                        size="lg"
-                        className="bg-[#00ffb9] hover:bg-[#00ffb9]/90 text-black font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {minting ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                            Minting NFT...
-                          </>
-                        ) : depositRuleChecking ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                            Checking Account...
-                          </>
-                        ) : (
-                          "Send NFT"
-                        )}
-                      </Button>
-                    ) : (
-                      <div className="p-3 bg-[#00ffb9]/10 border border-[#00ffb9]/30 rounded">
-                        <p className="text-xs text-gray-400 mb-1">Transaction ID:</p>
-                        <a
-                          href={`${getDashboardUrl()}/transaction/${mintedTxId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm font-mono text-[#00ffb9] break-all hover:text-[#00ffb9]/80 transition-colors underline"
-                        >
-                          {mintedTxId}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                  )}
-                </div>
-              </CardContent>
-            )}
-          </Card>
-
-          {/* Step 5: Earn with Radix Rewards */}
-          <Card className="bg-[#1a1a1a] border-[#FF43CA]/30 relative overflow-hidden transition-colors duration-300 group">
-            {/* Card subtle glow - on hover */}
-            <div className="absolute inset-0 bg-gradient-to-br from-[#FF43CA]/5 via-transparent to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <CardHeader className="relative z-10">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                  rewardsButtonClicked
-                    ? "bg-[#FF43CA] shadow-[0_0_20px_rgba(255,67,202,0.4)]"
-                    : mintedTxId
-                    ? "bg-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)]"
-                    : "bg-gray-700"
-                }`}>
-                  <Gift className={`w-5 h-5 ${mintedTxId ? "text-black" : "text-white"}`} />
-                </div>
-                <div>
-                  <CardTitle className="text-white">Step 5: Earn with Radix Rewards</CardTitle>
-                  <CardDescription className="text-gray-400">
-                    {!mintedTxId
-                      ? "Complete previous steps to unlock"
-                      : "Use your PoP NFT to unlock an exclusive quest"
-                    }
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            {mintedTxId && (
-              <CardContent className="relative z-10">
-                <div className="text-center p-8 bg-black/30 border border-gray-700 rounded-lg">
-                  <Gift className="w-16 h-16 mx-auto mb-4 text-[#FF43CA]" />
-                  <h3 className="text-xl font-bold mb-2 text-white">
-                    Unlock Exclusive Rewards!
-                  </h3>
-                  <p className="text-gray-400 mb-6">
-                    Your Proof-of-Personhood NFT unlocks a quest in Radix Rewards, the 1 billion XRD incentives campaign.
-                    Click below to complete the quest and earn more points in Radix Rewards Season 1.
-                  </p>
-                  <a
-                    href="https://incentives.radixdlt.com/dashboard"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => setRewardsButtonClicked(true)}
-                  >
-                    <Button
-                      size="lg"
-                      className="bg-[#FF43CA] hover:bg-[#FF43CA]/90 text-black font-semibold"
-                    >
-                      Join Radix Rewards
-                    </Button>
-                  </a>
-                </div>
-              </CardContent>
-            )}
-          </Card>
-
-          {/* Diagnostic Information Display */}
-          {diagnosticInfo && (
-            <Card className="bg-[#1a1a1a] border-orange-500/50">
-              <CardHeader>
-                <CardTitle className="text-orange-400 flex items-center gap-2">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Diagnostic Information
-                </CardTitle>
-                <CardDescription className="text-gray-400">
-                  Please share this information with support to help diagnose the issue
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <pre className="text-xs text-gray-300 bg-black/50 p-4 rounded overflow-x-auto whitespace-pre-wrap font-mono border border-gray-700">
-                  {diagnosticInfo}
-                </pre>
-                <Button
-                  onClick={() => {
-                    navigator.clipboard.writeText(diagnosticInfo);
-                  }}
-                  className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white"
-                  size="sm"
+          </div>
+          <p className="hint">
+            To use your badge in a dApp, connect the Radix account that holds it.
+            The badge is soulbound — it can&apos;t be moved between accounts.
+          </p>
+        </>
+      )}
+      {!existingClaim && !mintedTxId && depositRuleAccepts === false && (
+        <div className="errbox">
+          <p>
+            <b>Deposits disabled.</b> Your Radix account blocks third-party deposits.
+            Enable deposits in the Radix wallet app, then check again.
+          </p>
+          <div style={{ marginTop: 10 }}>
+            <button
+              className="btn sm"
+              onClick={() => radixAccount && checkAccountDepositRule(radixAccount)}
+              disabled={depositRuleChecking}
+            >
+              {depositRuleChecking ? "Checking…" : "Check again"}
+            </button>
+          </div>
+        </div>
+      )}
+      {!existingClaim && (depositRuleAccepts !== false || mintedTxId) && (
+        <div className="claim">
+          <h3>{mintedTxId ? "Personhood on record" : "Ready to claim"}</h3>
+          <p>
+            {mintedTxId
+              ? "Your Proof-of-Personhood NFT is in your Radix account. It is soulbound — it can't be transferred, only proven."
+              : "All checks passed. The issuer will mint your Proof-of-Personhood NFT and send it to your connected account."}
+          </p>
+          {!mintedTxId ? (
+            <button
+              className="btn"
+              onClick={mintPopNft}
+              disabled={minting || depositRuleChecking || depositRuleAccepts === false}
+            >
+              {minting
+                ? "Minting NFT…"
+                : depositRuleChecking
+                ? "Checking account…"
+                : "Mint & send my NFT"}
+            </button>
+          ) : (
+            <>
+              <div className="txbox">
+                <div className="label">Transaction</div>
+                <a
+                  href={`${getDashboardUrl()}/transaction/${mintedTxId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
-                  Copy Diagnostic Info to Clipboard
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Error Display - Only show here if not related to profile check */}
-          {error && hasProfile !== false && (
-            <Card className="bg-[#1a1a1a] border-red-500/50">
-              <CardContent className="pt-6">
-                <div className="text-red-400">
-                  {error.includes('https://') ? (
-                    <>
-                      {error.split('https://')[0]}
-                      <a
-                        href={`https://${error.split('https://')[1]}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline hover:text-red-300"
-                      >
-                        https://{error.split('https://')[1]}
-                      </a>
-                    </>
-                  ) : (
-                    <p>{error}</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                  {mintedTxId}
+                </a>
+              </div>
+              {backUrl && (
+                <p style={{ marginTop: 14, marginBottom: 0 }}>
+                  <a className="btn" href={backUrl}>
+                    Return to the app →
+                  </a>
+                </p>
+              )}
+            </>
           )}
         </div>
-      </div>
-    </div>
+      )}
+    </>,
+  ];
+
+  return (
+    <>
+      <header className="hdr" id="top">
+        <div className="wrap hbar">
+          <div className="brand">
+            <span className="logomark" aria-hidden="true">
+              <i></i>
+              <i className="g"></i>
+              <i></i>
+              <i></i>
+            </span>
+            <h1>OTER</h1>
+            <span className="sub">Proof of Personhood</span>
+          </div>
+          <nav>
+            <a href="https://app.idos.network" target="_blank" rel="noopener noreferrer">
+              idOS
+            </a>
+            <a href="https://oter.io">oter.io</a>
+          </nav>
+        </div>
+      </header>
+
+      <main className="wrap">
+        <section className="intro">
+          <p className="tag">
+            Verify your personhood once with idOS FaceSign and receive a soulbound
+            Proof-of-Personhood NFT on Radix — a badge any dApp can gate on, starting
+            with the OTER oracle. One human, one badge.
+          </p>
+
+          <p className="sh" aria-live="polite">
+            <span className="dot" aria-hidden="true"></span>
+            {mintedTxId
+              ? "Complete · badge issued"
+              : existingClaim
+              ? "Complete · badge already issued"
+              : `Step ${currentStep} of 4 · ${SPINES[currentStep - 1]}`}
+          </p>
+
+          <div className="acc">
+            {SPINES.map((title, i) => {
+              const n = i + 1;
+              const open = viewStep === n;
+              return (
+                <section key={title} className={`panel ${open ? "open" : ""}`}>
+                  <button
+                    type="button"
+                    className="spine"
+                    onClick={() => setViewStep(n)}
+                    disabled={!stepUnlocked[i]}
+                    aria-expanded={open}
+                    aria-controls={`step-panel-${n}`}
+                  >
+                    <span className="p-idx num">{`0${n}`}</span>
+                    <span className="p-title">{title}</span>
+                    <span className={`p-cell ${stepDone[i] ? "done" : ""}`} aria-hidden="true">
+                      {stepDone[i] ? "✓" : ""}
+                    </span>
+                  </button>
+                  {/* Kept mounted when closed (inert) — the flow's state and the
+                      idOS session must survive flipping between steps. */}
+                  <div className="pbody" id={`step-panel-${n}`} inert={!open}>
+                    <div className="pbody-in">{panelBodies[i]}</div>
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+
+          {/* idOS enclave — must be in the DOM before any idOS client is created;
+              both login paths mount the enclave iframe into #idos-enclave. */}
+          <div className={`enclave ${radixAccount ? "" : "gone"}`}>
+            <div className="label">
+              Secure idOS enclave ·{" "}
+              {hasProfile && credentials.length > 0
+                ? "password prompt appears here if needed"
+                : "profile check or password prompt appears here"}
+            </div>
+            <div id="idos-enclave" className="enclave-box"></div>
+          </div>
+
+          <div className="below">
+            {error && hasProfile !== false && (
+              <div className="errbox">
+                <ErrorText text={error} />
+              </div>
+            )}
+            {diagnosticInfo && (
+              <div>
+                <p className="sh" style={{ marginBottom: 8 }}>
+                  Diagnostic information · share with support
+                </p>
+                <pre className="diag">{diagnosticInfo}</pre>
+                <button
+                  className="btn ghost sm"
+                  style={{ marginTop: 8 }}
+                  onClick={() => navigator.clipboard.writeText(diagnosticInfo)}
+                >
+                  Copy to clipboard
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <footer className="foot">
+          <div className="foot-top">
+            <div className="foot-brand">
+              <span className="logomark" aria-hidden="true">
+                <i></i>
+                <i className="g"></i>
+                <i></i>
+                <i></i>
+              </span>
+              <h2>OTER</h2>
+              <span className="sub">Proof of Personhood</span>
+            </div>
+            <p className="foot-tag">
+              One human, one badge. Personhood verified once via idOS FaceSign and
+              issued as a soulbound NFT on Radix — proof any Radix dApp can build
+              on, issued by OTER.
+            </p>
+          </div>
+
+          <div className="foot-cols">
+            <div>
+              <h3 className="label">Proof of Personhood</h3>
+              <ul>
+                <li>
+                  <a href="/">Verify personhood</a>
+                </li>
+                <li>
+                  <a href="https://app.idos.network" target="_blank" rel="noopener noreferrer">
+                    Get a FaceSign credential
+                    <Ext />
+                  </a>
+                </li>
+                <li>
+                  <a href="https://wallet.radixdlt.com" target="_blank" rel="noopener noreferrer">
+                    Install the Radix wallet
+                    <Ext />
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="label">Resources</h3>
+              <ul>
+                <li>
+                  <a href="https://oter.io" target="_blank" rel="noopener noreferrer">
+                    OTER Oracle
+                    <Ext />
+                  </a>
+                </li>
+                <li>
+                  <a href="https://random.oter.io" target="_blank" rel="noopener noreferrer">
+                    OTER Beacon
+                    <Ext />
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="label">Ecosystem</h3>
+              <ul>
+                <li>
+                  <a href="https://tahuna.org" target="_blank" rel="noopener noreferrer">
+                    Tahuna
+                    <Ext />
+                  </a>
+                </li>
+                <li>
+                  <a href="https://www.radixdlt.com" target="_blank" rel="noopener noreferrer">
+                    Radix DLT
+                    <Ext />
+                  </a>
+                </li>
+                <li>
+                  <a href="https://idos.network" target="_blank" rel="noopener noreferrer">
+                    idOS
+                    <Ext />
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="foot-bar">
+            <span>© 2026 OTER · Proof of Personhood · Powered by idOS FaceSign</span>
+            <span className="links">
+              <a href="https://oter.io" target="_blank" rel="noopener noreferrer">
+                oter.io
+              </a>
+              <a href="#top">Back to top</a>
+            </span>
+          </div>
+        </footer>
+      </main>
+    </>
   );
 }

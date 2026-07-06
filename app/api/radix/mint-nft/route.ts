@@ -87,10 +87,29 @@ export async function POST(request: NextRequest) {
     });
 
     // Send the transaction
-    const transactionId = await sendRadixTransaction({
-      privateKey: backendPrivateKey,
-      manifest,
-    });
+    let transactionId: string;
+    try {
+      transactionId = await sendRadixTransaction({
+        privateKey: backendPrivateKey,
+        manifest,
+      });
+    } catch (txError: any) {
+      // The NFT local id IS the idOS credential id, so the ledger enforces
+      // one-badge-per-credential even if the claims DB lost its record
+      // (e.g. a wiped local SurrealDB). Surface it as the same 409 the DB
+      // dedup produces instead of a generic 500.
+      if (String(txError?.message || txError).includes('NonFungibleAlreadyExists')) {
+        return NextResponse.json(
+          {
+            error: 'A Proof-of-Personhood NFT for this credential already exists on the ledger',
+            alreadyClaimed: true,
+            nftId: idosCredentialId,
+          },
+          { status: 409 }
+        );
+      }
+      throw txError;
+    }
 
     // Record the claim in database (using credentialId as NFT ID)
     await recordClaim(userId, idosCredentialId, radixAddress, evmAddress);

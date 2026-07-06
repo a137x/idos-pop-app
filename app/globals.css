@@ -2,67 +2,712 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
-  }
+/* ————————————————————————————————————————————————————————————————
+   OTER paper register — tokens from landing/src/lib/palette.ts (canon)
+   and app.css; layout idiom mirrors beacon/static/index.html.
+   Keep in sync with the oter.io landing.
+   ———————————————————————————————————————————————————————————————— */
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+:root {
+  --white: #fff6de;
+  --paper: #f7e8c6;
+  --ink: #2b261d;
+  --lightest: #efdfba;
+  --grey: #f2e4c0;
+  --beige: #e9d9b4;
+  --char: #1d150e;
+  --muted: #615743; /* landing --color-muted-foreground (n) */
+  --muted-soft: #9d9071; /* landing nLight — dimmest text only */
+  --blue: #5a7787;
+  --green: #768f4d;
+  --red: #bd6b4b;
+  --yellow: #cf9c3d;
+  --link: #435c77;
+  --green-pale: #e6e1b4;
+  --red-pale: #f4d5b2;
+  --yellow-pale: #f6e5b2;
+  --info-pale: #e1dfcd;
+  --line: 1px solid var(--ink);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans), Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  background-image: radial-gradient(var(--beige) 0.5px, transparent 0.5px);
+  background-size: 14px 14px;
+}
+
+a {
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--muted);
+}
+a:hover {
+  border-bottom-color: var(--ink);
+}
+
+/* Ecosystem container — matches the oter.io landing (max-w-[1280px],
+   px-5 md:px-10) so all OTER pages share one content width */
+.wrap {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+@media (min-width: 768px) {
+  .wrap {
+    padding: 0 40px;
+  }
+}
+.mono {
+  font-family: var(--font-mono), 'Courier New', monospace;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+.label {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* header */
+.hdr {
+  border-bottom: var(--line);
+  background: var(--paper);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.hbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* horizontal padding comes from .wrap so the logo aligns with content */
+  padding-block: 14px;
+}
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.brand h1 {
+  font-family: var(--font-heading), sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+/* OTER logomark — 2x2 tile cluster, one settled (green) cell */
+.logomark {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  width: 18px;
+  height: 18px;
+  align-self: center;
+  flex: 0 0 auto;
+}
+.logomark i {
+  display: block;
+  background: var(--ink);
+}
+.logomark i.g {
+  background: var(--green);
+}
+.brand .sub {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+.hdr nav a {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-left: 18px;
+  border: none;
+}
+.hdr nav a:hover {
+  color: var(--link);
+}
+
+/* status line */
+.sh {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin: 0 0 16px;
+}
+.dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  margin-right: 6px;
+  vertical-align: middle;
+  box-shadow: 0 0 0 0 rgba(118, 143, 77, 0.6);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(118, 143, 77, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(118, 143, 77, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(118, 143, 77, 0);
   }
 }
 
-@layer base {
-  * {
-    @apply border-border;
+/* intro */
+.intro {
+  padding: 30px 0 22px;
+}
+.intro .tag {
+  margin: 0 0 18px;
+  max-width: 620px;
+  color: var(--ink);
+  font-size: 15.5px;
+  line-height: 1.6;
+}
+
+/* ————————————————————————————————————————————————————————
+   The register: horizontal step accordion.
+   Collapsed steps are vertical file-tab spines; the active
+   step flips open. Spine of the open step inverts to ink.
+   ———————————————————————————————————————————————————————— */
+.acc {
+  display: flex;
+  border: var(--line);
+  background: var(--lightest);
+  min-height: 460px;
+}
+.panel {
+  display: flex;
+  min-width: 0;
+  /* closed = just the 56px spine; the (inert) body is clipped away */
+  flex: 0 0 56px;
+  overflow: hidden;
+  transition: flex-grow 0.45s ease, flex-basis 0.45s ease;
+}
+.panel + .panel {
+  border-left: var(--line);
+}
+.panel.open {
+  flex: 1 1 0;
+}
+.spine {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 56px;
+  flex: 0 0 56px;
+  padding: 14px 0;
+  background: var(--grey);
+  color: var(--ink);
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-mono), monospace;
+}
+.spine:hover {
+  background: var(--beige);
+}
+.panel.open .spine {
+  background: var(--ink);
+  color: var(--paper);
+}
+.panel.open .spine:hover {
+  background: var(--char);
+}
+.spine:disabled {
+  cursor: not-allowed;
+  color: var(--muted-soft);
+  background: var(--grey);
+}
+.spine:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: -3px;
+}
+.p-idx {
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+.p-title {
+  writing-mode: vertical-rl;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  flex: 1;
+  white-space: nowrap;
+}
+.p-cell {
+  width: 14px;
+  height: 14px;
+  border: 1px solid currentColor;
+  font-size: 10px;
+  line-height: 13px;
+  text-align: center;
+  flex: 0 0 auto;
+}
+.p-cell.done {
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--paper);
+}
+.pbody {
+  /* display:none keeps the React tree (and idOS session state) mounted while
+     zeroing the hidden sheet out of the flex layout entirely */
+  display: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--white); /* the pulled-out sheet */
+}
+.panel.open .pbody {
+  display: block;
+  animation: pbfade 0.4s ease;
+}
+@keyframes pbfade {
+  from {
+    opacity: 0;
   }
-  body {
-    @apply bg-background text-foreground;
+  to {
+    opacity: 1;
+  }
+}
+.pbody-in {
+  padding: 24px;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pbody-in h2 {
+  font-family: var(--font-heading), sans-serif;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  margin: 0;
+}
+.pbody-in .desc {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+/* boxes */
+.okbox {
+  border: var(--line);
+  background: var(--green-pale);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.okbox .val {
+  font-family: var(--font-mono), monospace;
+  font-size: 12.5px;
+  word-break: break-all;
+  flex: 1;
+  min-width: 0;
+}
+.errbox {
+  border: var(--line);
+  background: var(--red-pale);
+  padding: 12px 14px;
+  font-size: 13.5px;
+}
+.errbox p {
+  margin: 0;
+}
+.errbox a {
+  border-bottom: 1px solid var(--ink);
+  word-break: break-all;
+}
+.notebox {
+  border: 1px dashed var(--muted);
+  background: var(--grey);
+  padding: 12px 14px;
+  font-size: 13px;
+}
+.notebox p {
+  margin: 0 0 8px;
+}
+.notebox p:last-child {
+  margin-bottom: 0;
+}
+.infobox {
+  border: var(--line);
+  background: var(--info-pale);
+  padding: 12px 14px;
+  font-size: 13px;
+}
+.hint {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin: 0;
+}
+.hint a {
+  color: var(--ink);
+}
+.hint a.attn {
+  background: var(--yellow);
+  border-bottom-color: var(--ink);
+}
+
+/* buttons */
+.btn {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 11px 16px;
+  background: var(--ink);
+  color: var(--paper);
+  border: var(--line);
+  cursor: pointer;
+  display: inline-block;
+  text-align: center;
+}
+.btn:hover {
+  background: var(--char);
+}
+.btn.ghost {
+  background: transparent;
+  color: var(--ink);
+}
+.btn.ghost:hover {
+  background: var(--beige);
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.btn:disabled:hover {
+  background: var(--ink);
+}
+.btn.ghost:disabled:hover {
+  background: transparent;
+}
+.btn.w100 {
+  width: 100%;
+}
+.btn.sm {
+  padding: 7px 12px;
+  font-size: 11px;
+}
+a.btn {
+  border-bottom: var(--line);
+}
+.btnrow {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+.btnrow .btn:first-child {
+  flex: 1;
+}
+.linklike {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 1px dashed var(--muted);
+}
+.linklike:hover {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+/* credential row */
+.cred {
+  border: var(--line);
+  background: var(--grey);
+  padding: 12px 14px;
+}
+.cred .cred-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.cred .cred-type {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chip {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 1px solid var(--muted);
+  color: var(--muted);
+  padding: 2px 7px;
+}
+.chip.ok {
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--paper);
+}
+.chip.bad {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--paper);
+}
+.cred .kv {
+  font-family: var(--font-mono), monospace;
+  font-size: 11.5px;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+/* claim summary */
+.claim {
+  border: var(--line);
+  background: var(--grey);
+  padding: 26px 22px;
+  text-align: center;
+}
+.claim h3 {
+  font-family: var(--font-heading), sans-serif;
+  font-size: 20px;
+  margin: 0 0 8px;
+}
+.claim p {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+.txbox {
+  border: var(--line);
+  background: var(--green-pale);
+  padding: 12px 14px;
+  text-align: left;
+}
+.txbox a {
+  font-family: var(--font-mono), monospace;
+  font-size: 12.5px;
+  word-break: break-all;
+}
+
+/* enclave strip — must stay mounted for the idOS iframe */
+.enclave {
+  border: var(--line);
+  border-top: none;
+  background: var(--grey);
+  padding: 12px 16px;
+}
+.enclave.gone {
+  display: none;
+}
+.enclave-box {
+  overflow: hidden;
+}
+.enclave-box iframe {
+  height: auto !important;
+  min-height: 0 !important;
+  aspect-ratio: auto !important;
+  max-height: 120px;
+  width: 100%;
+  border: none;
+}
+
+/* diagnostics */
+pre.diag {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  background: var(--char);
+  color: #efdfba;
+  padding: 16px;
+  overflow: auto;
+  border: var(--line);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+/* sections below the register */
+.below {
+  margin-top: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* footer — paper register, mirrors the beacon / oter.io landing structure */
+.foot {
+  border-top: var(--line);
+  margin-top: 46px;
+  padding: 34px 0 46px;
+}
+.foot-top {
+  max-width: 560px;
+  padding-bottom: 26px;
+  border-bottom: 1px solid var(--beige);
+}
+.foot-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.foot-brand h2 {
+  font-family: var(--font-heading), sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+.foot-brand .sub {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+.foot-tag {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.foot-cols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px 24px;
+  padding: 30px 0;
+  border-bottom: 1px solid var(--beige);
+}
+.foot-cols h3 {
+  margin: 0 0 14px;
+}
+.foot-cols ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.foot-cols a {
+  border: none;
+  color: var(--ink);
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.foot-cols a:hover {
+  color: var(--link);
+}
+.foot-cols svg {
+  opacity: 0.55;
+}
+@media (max-width: 720px) {
+  .foot-cols {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.foot-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 22px;
+  font-family: var(--font-mono), monospace;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.foot-bar .links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+.foot-bar {
+  color: var(--muted-soft);
+}
+.foot-bar a {
+  border: none;
+  color: var(--muted);
+}
+.foot-bar a:hover {
+  color: var(--ink);
+}
+
+/* mobile: the register stacks vertically, tabs become bars */
+@media (max-width: 760px) {
+  .acc {
+    flex-direction: column;
+    min-height: 0;
+  }
+  .panel,
+  .panel.open {
+    flex: none;
+    flex-direction: column;
+    transition: none;
+  }
+  .panel + .panel {
+    border-left: none;
+    border-top: var(--line);
+  }
+  .spine {
+    flex-direction: row;
+    width: 100%;
+    flex: none;
+    min-height: 46px;
+    padding: 0 14px;
+    gap: 12px;
+  }
+  .p-title {
+    writing-mode: horizontal-tb;
+    flex: 1;
+    text-align: left;
+  }
+  .pbody-in {
+    min-height: 0;
+    padding: 18px 16px;
   }
 }
 
-@keyframes glow {
-  0%, 100% {
-    text-shadow: none;
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    animation: none;
   }
-  50% {
-    text-shadow: 0 0 10px rgba(0, 255, 185, 0.8), 0 0 20px rgba(0, 255, 185, 0.5), 0 0 30px rgba(0, 255, 185, 0.3);
+  .panel {
+    transition: none !important;
+  }
+  .panel.open .pbody {
+    animation: none;
   }
 }

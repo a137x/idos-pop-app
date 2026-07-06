@@ -7,8 +7,13 @@ import { getNetworkId, getDappDefinitionAddress } from '@/lib/radix/network-conf
 
 const networkId = getNetworkId();
 const dAppDefinitionAddress = getDappDefinitionAddress();
-const applicationName = 'Radix | idOS Proof-of-Personhood';
-const expectedOrigin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+// ASCII only — this string is sent as an HTTP header (RDX-App-Name) on every
+// gateway call; the gateway edge rejects non-ASCII header values with 400.
+const applicationName = 'OTER Proof of Personhood';
+// MUST match the origin the wallet saw when signing the ROLA payload — i.e. the
+// page origin. Local dev is pinned to :3002 (Tahuna owns :3000, oracle FE :3001);
+// production sets NEXT_PUBLIC_APP_URL (e.g. https://idos.oter.io).
+const expectedOrigin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002';
 
 // Initialize ROLA
 const gatewayApiClient = GatewayApiClient.initialize({

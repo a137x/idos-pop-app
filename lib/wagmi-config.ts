@@ -31,10 +31,10 @@ export const modal = createAppKit({
   networks: networks as any,
   defaultNetwork: mainnet,
   metadata: {
-    name: "idOS Radix Verify",
-    description: "Verify your identity credentials and claim your Radix NFT",
+    name: "OTER Proof of Personhood",
+    description: "Verify personhood via idOS FaceSign and claim your PoP NFT on Radix",
     url: typeof window !== "undefined" ? window.location.origin : "",
-    icons: ["https://avatars.githubusercontent.com/u/37784886"],
+    icons: ["https://oter.io/apple-touch-icon.png"],
   },
   features: {
     analytics: false,

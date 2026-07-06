@@ -12,6 +12,18 @@ export const RadixContext = createContext<RadixContextType>({ rdt: null });
 
 let rdtSingleton: RadixDappToolkit | undefined = undefined;
 
+// One-shot ROLA challenge override. RDT has a single global challenge
+// generator; normal account verification uses a random backend challenge,
+// but the Radix→idOS login-key bridge needs the wallet to sign a FIXED
+// derivation challenge (see lib/radix/idos-signer.ts). Set the override
+// immediately before sendOneTimeRequest — it is consumed by the next
+// challenge request and cleared.
+let nextChallengeOverride: string | null = null;
+
+export function setNextRolaChallenge(challenge: string) {
+  nextChallengeOverride = challenge;
+}
+
 export function RadixProvider({ children }: { children: React.ReactNode }) {
   const [rdt, setRdt] = useState<RadixDappToolkit | undefined>(undefined);
 
@@ -25,6 +37,9 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
       RadixDappToolkit({
         dAppDefinitionAddress: getDappDefinitionAddress(),
         networkId: getNetworkId(),
+        // ASCII only — forwarded as a gateway HTTP header (RDX-App-Name)
+        applicationName: 'OTER Proof of Personhood',
+        applicationVersion: '1.0.0',
       });
 
     if (!rdtSingleton) {
@@ -47,6 +62,12 @@ export function RadixProvider({ children }: { children: React.ReactNode }) {
     if (!rdt) return;
 
     rdt.walletApi.provideChallengeGenerator(async () => {
+      // Consume a pending one-shot override (derivation challenge) first
+      if (nextChallengeOverride) {
+        const challenge = nextChallengeOverride;
+        nextChallengeOverride = null;
+        return challenge;
+      }
       try {
         // Fetch challenge from backend
         const response = await fetch('/api/radix/challenge');
